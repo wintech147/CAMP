@@ -28,6 +28,28 @@ This version will provide you recommendations for the Microsoft Purview solution
             a.	Audit
             b.	eDiscovery
 
+## Secure by Default Checks
+
+CAMP now includes checks aligned with [Microsoft Purview Deployment Models](https://aka.ms/purviewdeploymentmodels), including the Secure by Default, Oversharing Prevention, and Data Leakage Mitigation blueprints:
+
+### Information Protection (IP) Blueprint Checks
+
+| Check ID | Name | Blueprint Source |
+|----------|------|------------------|
+| IP-105 | Configure Default Sensitivity Label for All Content | Secure by Default Milestone 1 |
+| IP-106 | Require Justification for Sensitivity Label Downgrade or Removal | Secure by Default |
+| IP-107 | Enable Sensitivity Labels for SharePoint and OneDrive | Secure by Default Milestone 1 |
+| IP-108 | Enable Encryption on Confidential and Highly Confidential Labels | Secure by Default Milestone 3 |
+
+### Data Loss Prevention (DLP) Blueprint Checks
+
+| Check ID | Name | Blueprint Source |
+|----------|------|------------------|
+| DLP-201 | Restrict External Sharing of Sensitivity Labeled Content | Secure by Default, Oversharing Prevention |
+| DLP-202 | Enable Endpoint DLP to Prevent Data Exfiltration | Lightweight Guide to Mitigate Data Leakage |
+
+These checks help organizations implement Microsoft's recommended data protection strategies for preventing oversharing, data leakage, and ensuring a "secure by default" posture.
+
 # That is awesome! How do I run it?
 
 #   Pre-Requisites

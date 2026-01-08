@@ -932,7 +932,8 @@ Function Get-CAMPCollection {
         $Collection = Get-DataLossPreventionSettings -Collection $Collection -LogFile $LogFile
     }
 
-    if ($SolutionList -icontains "IP") {
+    # IP settings are needed for both IP and DLP solutions (DLP checks may reference sensitivity labels)
+    if (($SolutionList -icontains "IP") -or ($SolutionList -icontains "DLP")) {
         $InfoMessage = "Getting Information Protection Settings"
         Write-Host "$(Get-Date) $InfoMessage"
         Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
