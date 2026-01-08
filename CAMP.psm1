@@ -82,24 +82,27 @@ Function Invoke-CAMPConnections {
 
 
     try {
+        $MinRequiredVersion = [Version]"3.0.0"
         try {
-            $ExchangeVersion = (Get-InstalledModule -name "ExchangeOnlineManagement" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc)[0].Version
+            $ExchangeVersionString = (Get-InstalledModule -name "ExchangeOnlineManagement" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc)[0].Version
+            $ExchangeVersion = [Version]$ExchangeVersionString
         }
         catch {
-            $ExchangeVersion = "Error"
-            write-host "$(Get-Date) Exchange Online Management module is not installed. Installing.."
+            $ExchangeVersion = $null
+            Write-Host "$(Get-Date) Exchange Online Management module is not installed. Installing.."
             Write-Verbose "Installing ExchangeOnlineManagement"
-            Install-Module -Name "ExchangeOnlineManagement" -force
+            Install-Module -Name "ExchangeOnlineManagement" -Force -AllowClobber
         }
-        
-        
-        if ($ExchangeVersion -eq "Error") {
-            $ExchangeVersion = (Get-InstalledModule -name "ExchangeOnlineManagement" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc)[0].Version
+
+
+        if ($null -eq $ExchangeVersion) {
+            $ExchangeVersionString = (Get-InstalledModule -name "ExchangeOnlineManagement" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc)[0].Version
+            $ExchangeVersion = [Version]$ExchangeVersionString
         }
-        
-        if ("$ExchangeVersion" -lt "2.0.3") {
-            write-host "$(Get-Date) Your Exchange Online Management module is not updated. Updating.."
-            Update-Module -Name "ExchangeOnlineManagement" -RequiredVersion 2.0.3
+
+        if ($ExchangeVersion -lt $MinRequiredVersion) {
+            Write-Host "$(Get-Date) Your Exchange Online Management module version ($ExchangeVersion) is outdated. Minimum required: $MinRequiredVersion. Updating.."
+            Update-Module -Name "ExchangeOnlineManagement" -Force
         }
 
         $global:ConnectionEstablished = $true
@@ -127,7 +130,7 @@ Function Invoke-CAMPConnections {
             Default { $ConnectionUri = '' }
         }
 
-        $InfoMessage = "Connecting to Security & Compliance Center"
+        $InfoMessage = "Connecting to Security & Compliance PowerShell (Microsoft Purview)"
         Write-Host "$(Get-Date) $InfoMessage"
         Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
         if ($ConnectionUri -eq '') {
@@ -136,14 +139,14 @@ Function Invoke-CAMPConnections {
         else {
             Connect-IPPSSession -UserPrincipalName $userName -ConnectionUri $ConnectionUri -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
         }
-        try { $statusCode = wget http://aka.ms/mcca-execution -Method head | % { $_.StatusCode } }catch {}
+        try { $statusCode = Invoke-WebRequest -Uri "https://aka.ms/mcca-execution" -Method Head -UseBasicParsing | ForEach-Object { $_.StatusCode } } catch {}
     }
     catch {
-        Write-Host "Error:$(Get-Date) There was an issue in connecting to Security & Compliance Center. Please try running the tool again after some time." -ForegroundColor:Red
+        Write-Host "Error:$(Get-Date) There was an issue in connecting to Security & Compliance PowerShell. Please try running the tool again after some time." -ForegroundColor:Red
         $ErrorMessage = $_.ToString()
         $StackTraceInfo = $_.ScriptStackTrace
         Write-Log -IsError -ErrorMessage $ErrorMessage -StackTraceInfo $StackTraceInfo -LogFile $LogFile -ErrorAction:SilentlyContinue
-        throw 'There was an issue in connecting to Security & Compliance Center. Please try running the tool again after some time.'
+        throw 'There was an issue in connecting to Security & Compliance PowerShell. Please try running the tool again after some time.'
     }
 }
 
@@ -689,7 +692,7 @@ Function Get-CommunicationComplianceSettings {
     Return $Collection
 }
 
-# Get Information Governance settings
+# Get Data Lifecycle Management settings
 Function Get-InformationGovernanceSettings {
     Param(
         $Collection,
@@ -929,7 +932,8 @@ Function Get-CAMPCollection {
         $Collection = Get-DataLossPreventionSettings -Collection $Collection -LogFile $LogFile
     }
 
-    if ($SolutionList -icontains "IP") {
+    # IP settings are needed for both IP and DLP solutions (DLP checks may reference sensitivity labels)
+    if (($SolutionList -icontains "IP") -or ($SolutionList -icontains "DLP")) {
         $InfoMessage = "Getting Information Protection Settings"
         Write-Host "$(Get-Date) $InfoMessage"
         Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
@@ -944,7 +948,7 @@ Function Get-CAMPCollection {
     }
     
     if (($SolutionList -icontains "IG") -or ($SolutionList -icontains "RM")) {
-        $InfoMessage = "Getting Information Governance Settings"
+        $InfoMessage = "Getting Data Lifecycle Management Settings"
         Write-Host "$(Get-Date) $InfoMessage"
         Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
         $Collection = Get-InformationGovernanceSettings -Collection $Collection -LogFile $LogFile
@@ -1040,12 +1044,12 @@ Function Get-CAMPReport {
 				14	United Kingdom
 
 
-		.PARAMETER Solution 
-            This will generate a report only for the solutions entered by you. You need to input appropriate numbers from the following list corresponding to the solution. 
+		.PARAMETER Solution
+            This will generate a report only for the solutions entered by you. You need to input appropriate numbers from the following list corresponding to the solution.
 			Input	Solution
 				1	Data Loss Prevention
 				2	Information Protection
-				3	Information Governance
+				3	Data Lifecycle Management
 				4	Records Management
 				5	Communication Compliance
 				6	Insider Risk Management
@@ -1053,11 +1057,11 @@ Function Get-CAMPReport {
 				8	eDiscovery
 
         .PARAMETER  ExchangeEnvironmentName
-        This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft 365 DoD organization or Microsoft GCC High organization
+        This will generate CAMP report for Security & Compliance PowerShell in a Microsoft 365 DoD organization or Microsoft GCC High organization
          O365USGovDoD
-           This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft 365 DoD organization.
+           This will generate CAMP report for Security & Compliance PowerShell in a Microsoft 365 DoD organization.
          O365USGovGCCHigh
-           This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft GCC High organization.
+           This will generate CAMP report for Security & Compliance PowerShell in a Microsoft GCC High organization.
 
         .PARAMETER Collection
             Internal only.
@@ -1737,7 +1741,7 @@ function Get-SolutionTable {
     }
     $SolutionTable[3] = New-Object -TypeName PSObject -Property @{
         Code     = "IG"
-        FullName = "Information Governance"
+        FullName = "Data Lifecycle Management"
     }
     $SolutionTable[4] = New-Object -TypeName PSObject -Property @{
         Code     = "RM"

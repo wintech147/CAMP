@@ -74,7 +74,7 @@ class DLP : CAMPCheck {
             {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
                 }
             }
             $this.ExpandResults = $True

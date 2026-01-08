@@ -13,7 +13,7 @@ class Audit102 : CAMPCheck {
         $this.Name = "Configure Alert Policies"
         $this.PassText = "Your organization has configured alert policies"
         $this.FailRecommendation = "Your organization should configure alert policies"
-        $this.Importance = "Your organization should configure alert policies to send notifications on activities that are indicators of a potential security issue or data breach. Office 365 provides built-in alert policies that are turned on by default."
+        $this.Importance = "Your organization should configure alert policies to send notifications on activities that are indicators of a potential security issue or data breach. Microsoft 365 provides built-in alert policies that are turned on by default."
         $this.CheckType = [CheckType]::ObjectPropertyValue
         $this.ExpandResults = $True
         $this.ObjectType = "Alert Policy"
@@ -23,26 +23,26 @@ class Audit102 : CAMPCheck {
         {
             $this.Links = @{
                 "Turn on audit log search" = "https://aka.ms/mcca-aa-docs-action-turn-on"
-                "Security & Compliance Console : Alert Policies" = "https://aka.ms/mcca-gcch-aa-2-compliance-center"
+                "Microsoft Purview portal - Alert Policies" = "https://aka.ms/mcca-gcch-aa-2-compliance-center"
                 "Learn more about alert policies" = "https://aka.ms/mcca-aa-docs-learn-more"
                 "Compliance Manager - Audit Actions" = "https://aka.ms/mcca-gcch-aa-compliance-manager"
             }
-        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD") 
+        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
                 "Turn on audit log search" = "https://aka.ms/mcca-aa-docs-action-turn-on"
-                "Security & Compliance Console : Alert Policies" = "https://aka.ms/mcca-dod-aa-2-compliance-center"
+                "Microsoft Purview portal - Alert Policies" = "https://aka.ms/mcca-dod-aa-2-compliance-center"
                 "Learn more about alert policies" = "https://aka.ms/mcca-aa-docs-learn-more"
                 "Compliance Manager - Audit Actions" = "https://aka.ms/mcca-dod-aa-compliance-manager"
             }
         }else
         {
-        $this.Links = @{
-            "Turn on audit log search" = "https://aka.ms/mcca-aa-docs-action-turn-on"
-            "Security & Compliance Console : Alert Policies" = "https://aka.ms/mcca-aa-2-compliance-center"
-            "Learn more about alert policies" = "https://aka.ms/mcca-aa-docs-learn-more"
-            "Compliance Manager - Audit Actions" = "https://aka.ms/mcca-aa-compliance-manager"
-        }
+            $this.Links = @{
+                "Turn on audit log search" = "https://aka.ms/mcca-aa-docs-action-turn-on"
+                "Microsoft Purview portal - Alert Policies" = "https://aka.ms/mcca-aa-2-compliance-center"
+                "Learn more about alert policies" = "https://aka.ms/mcca-aa-docs-learn-more"
+                "Compliance Manager - Audit Actions" = "https://aka.ms/mcca-aa-compliance-manager"
+            }
         }
     }
 
@@ -102,7 +102,7 @@ class Audit102 : CAMPCheck {
             {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
                 }
             }
             $this.Completed = $True

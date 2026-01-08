@@ -10,9 +10,9 @@ class CC101 : CAMPCheck {
         $this.Control = "CC-101"
         $this.ParentArea = "Insider Risk"
         $this.Area = "Communication Compliance"
-        $this.Name = "Enable Communication Compliance in O365"
-        $this.PassText = "Your organization has enabled Communication Compliance in O365"
-        $this.FailRecommendation = "Your organization should enable Communication Compliance in O365"
+        $this.Name = "Enable Communication Compliance in Microsoft 365"
+        $this.PassText = "Your organization has enabled Communication Compliance in Microsoft 365"
+        $this.FailRecommendation = "Your organization should enable Communication Compliance in Microsoft 365"
         $this.Importance = "Your organization should use communication compliance to scan internal and external communications for policy matches so they can be examined by designated reviewers."
         $this.ExpandResults = $True
         $this.ItemName = "Role"
@@ -21,23 +21,23 @@ class CC101 : CAMPCheck {
         {
             $this.Links = @{
                 "Communication compliance in Microsoft 365"     = "https://aka.ms/mcca-cc-docs-learn-more"
-                "Compliance Center - Communication Compliance" = "https://aka.ms/mcca-gcch-cc-compliance-center"
+                "Microsoft Purview portal - Communication Compliance" = "https://aka.ms/mcca-gcch-cc-compliance-center"
                 "Compliance Manager - CC Actions" = "https://aka.ms/mcca-gcch-cc-compliance-manager"
-            } 
-        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD") 
+            }
+        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
                 "Communication compliance in Microsoft 365"     = "https://aka.ms/mcca-cc-docs-learn-more"
-                "Compliance Center - Communication Compliance" = "https://aka.ms/mcca-dod-cc-compliance-center"
+                "Microsoft Purview portal - Communication Compliance" = "https://aka.ms/mcca-dod-cc-compliance-center"
                 "Compliance Manager - CC Actions" = "https://aka.ms/mcca-dod-cc-compliance-manager"
             }
         }else
         {
-        $this.Links = @{
-            "Communication compliance in Microsoft 365"     = "https://aka.ms/mcca-cc-docs-learn-more"
-            "Compliance Center - Communication Compliance" = "https://aka.ms/mcca-cc-compliance-center"
-            "Compliance Manager - CC Actions" = "https://aka.ms/mcca-cc-compliance-manager"
-        }
+            $this.Links = @{
+                "Communication compliance in Microsoft 365"     = "https://aka.ms/mcca-cc-docs-learn-more"
+                "Microsoft Purview portal - Communication Compliance" = "https://aka.ms/mcca-cc-compliance-center"
+                "Compliance Manager - CC Actions" = "https://aka.ms/mcca-cc-compliance-manager"
+            }
         }
     }
 
@@ -114,7 +114,7 @@ class CC101 : CAMPCheck {
             if ($($hasremediation.count) -gt 0) {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
                 }
             }
             $this.Completed = $True

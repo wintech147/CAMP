@@ -10,36 +10,36 @@ class eDiscovery102 : CAMPCheck {
         $this.Control = "eDiscovery-102"
         $this.ParentArea = "Discovery & Response"
         $this.Area = "eDiscovery"
-        $this.Name = "Use Advanced eDiscovery Cases to Support Legal Investigations"
-        $this.PassText = "Your organization is using Advanced eDiscovery cases to support legal investigations"
-        $this.FailRecommendation = "Your organization needs to review (or set up) Advanced eDiscovery cases"
-        $this.Importance = "Your organization should use Advanced eDiscovery to manage the end-to-end workflow to preserve, collect, review, analyze, and export content that's responsive to your organization's internal and external investigations."
+        $this.Name = "Use eDiscovery (Premium) Cases to Support Legal Investigations"
+        $this.PassText = "Your organization is using eDiscovery (Premium) cases to support legal investigations"
+        $this.FailRecommendation = "Your organization needs to review (or set up) eDiscovery (Premium) cases"
+        $this.Importance = "Your organization should use eDiscovery (Premium) to manage the end-to-end workflow to preserve, collect, review, analyze, and export content that's responsive to your organization's internal and external investigations."
         $this.ExpandResults = $True
         $this.ItemName = "Case Name"
         $this.DataType = "Case Status"
         if($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovGCCHigh")
         {
             $this.Links = @{
-                "Get started with Advanced eDiscovery" = "https://aka.ms/mcca-aed-docs-action"
-                "Compliance Center - Advanced eDiscovery"  = "https://aka.ms/mcca-gcch-aed-compliance-center"
+                "Get started with eDiscovery (Premium)" = "https://aka.ms/mcca-aed-docs-action"
+                "Microsoft Purview portal - eDiscovery (Premium)"  = "https://aka.ms/mcca-gcch-aed-compliance-center"
                 "eDiscovery in Microsoft 365" = "https://aka.ms/mcca-aed-docs-learn-more"
                 "Compliance Manager - eDiscovery" = "https://aka.ms/mcca-gcch-aed-compliance-manager"
             }
-        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD") 
+        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
-                "Get started with Advanced eDiscovery" = "https://aka.ms/mcca-aed-docs-action"
-                "Compliance Center - Advanced eDiscovery"  = "https://aka.ms/mcca-dod-aed-compliance-center"
+                "Get started with eDiscovery (Premium)" = "https://aka.ms/mcca-aed-docs-action"
+                "Microsoft Purview portal - eDiscovery (Premium)"  = "https://aka.ms/mcca-dod-aed-compliance-center"
                 "eDiscovery in Microsoft 365" = "https://aka.ms/mcca-aed-docs-learn-more"
                 "Compliance Manager - eDiscovery" = "https://aka.ms/mcca-dod-aed-compliance-manager"
             }
         }else
         {
-        $this.Links = @{
-            "Get started with Advanced eDiscovery"     = "https://aka.ms/mcca-aed-docs-action"
-            "Compliance Center - Advanced eDiscovery"   = "https://aka.ms/mcca-aed-compliance-center"
-            "eDiscovery in Microsoft 365" = "https://aka.ms/mcca-aed-docs-learn-more"
-        }
+            $this.Links = @{
+                "Get started with eDiscovery (Premium)"     = "https://aka.ms/mcca-aed-docs-action"
+                "Microsoft Purview portal - eDiscovery (Premium)"   = "https://aka.ms/mcca-aed-compliance-center"
+                "eDiscovery in Microsoft 365" = "https://aka.ms/mcca-aed-docs-learn-more"
+            }
         }
     }
 
@@ -98,8 +98,8 @@ class eDiscovery102 : CAMPCheck {
             {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
-                }        
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
+                }
             } 
             $this.Completed = $True
         }
