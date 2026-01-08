@@ -8,8 +8,8 @@ class IG102 : CAMPCheck {
 
     IG102() {
         $this.Control = "IG-102"
-        $this.ParentArea = "Microsoft Information Governance"
-        $this.Area = "Information Governance"
+        $this.ParentArea = "Data Lifecycle Management"
+        $this.Area = "Data Lifecycle Management"
         $this.Name = "Use Data Retention Labels and Policies"
         $this.PassText = "Your organization is using retention policies by publishing a retention label"
         $this.FailRecommendation = "Your organization should use retention policies by publishing a retention label"
@@ -24,25 +24,25 @@ class IG102 : CAMPCheck {
             $this.Links = @{
                 "Learn More Overview of retention labels"     = "https://aka.ms/mcca-ig-docs-learn-more"
                 "Overview of retention policies"              = "https://aka.ms/mcca-ig-docs-retention-policies"
-                "Compliance Center - Information Governance" = "https://aka.ms/mcca-gcch-ig-compliance-center"
-                "Compliance Manager - IG Actions" = "https://aka.ms/mcca-gcch-ig-compliance-manager"
+                "Microsoft Purview portal - Data Lifecycle Management" = "https://aka.ms/mcca-gcch-ig-compliance-center"
+                "Compliance Manager - Data Lifecycle Actions" = "https://aka.ms/mcca-gcch-ig-compliance-manager"
             }
-        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD") 
+        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
                 "Learn More Overview of retention labels"     = "https://aka.ms/mcca-ig-docs-learn-more"
                 "Overview of retention policies"              = "https://aka.ms/mcca-ig-docs-retention-policies"
-                "Compliance Center - Information Governance" = "https://aka.ms/mcca-dod-ig-compliance-center"
-                "Compliance Manager - IG Actions" = "https://aka.ms/mcca-dod-ig-compliance-manager"
-            }  
+                "Microsoft Purview portal - Data Lifecycle Management" = "https://aka.ms/mcca-dod-ig-compliance-center"
+                "Compliance Manager - Data Lifecycle Actions" = "https://aka.ms/mcca-dod-ig-compliance-manager"
+            }
         }else
         {
-        $this.Links = @{
-            "Learn More Overview of retention labels"     = "https://aka.ms/mcca-ig-docs-learn-more"
-            "Overview of retention policies"              = "https://aka.ms/mcca-ig-docs-retention-policies"
-            "Compliance Center - Information Governance" = "https://aka.ms/mcca-ig-compliance-center"
-            "Compliance Manager - IG Actions" = "https://aka.ms/mcca-ig-compliance-manager"
-        }
+            $this.Links = @{
+                "Learn More Overview of retention labels"     = "https://aka.ms/mcca-ig-docs-learn-more"
+                "Overview of retention policies"              = "https://aka.ms/mcca-ig-docs-retention-policies"
+                "Microsoft Purview portal - Data Lifecycle Management" = "https://aka.ms/mcca-ig-compliance-center"
+                "Compliance Manager - Data Lifecycle Actions" = "https://aka.ms/mcca-ig-compliance-manager"
+            }
         }
     }
 
@@ -79,7 +79,7 @@ class IG102 : CAMPCheck {
             {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
                 }
             }
             $this.Completed = $True

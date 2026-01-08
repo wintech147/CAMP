@@ -23,23 +23,23 @@ class IP104 : CAMPCheck {
         {
             $this.Links = @{
                 "Learn more about configuring classifications for SharePoint Online" = "https://aka.ms/mcca-ip-docs-learn-more"
-                "Compliance Center - Information Protection"                        = "https://aka.ms/mcca-gcch-ip-compliance-center"
+                "Microsoft Purview portal - Information Protection"                  = "https://aka.ms/mcca-gcch-ip-compliance-center"
                 "Compliance Manager - IP Actions" = "https://aka.ms/mcca-gcch-ip-compliance-manager"
-            } 
-        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD") 
+            }
+        }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
                 "Learn more about configuring classifications for SharePoint Online" = "https://aka.ms/mcca-ip-docs-learn-more"
-                "Compliance Center - Information Protection"                        = "https://aka.ms/mcca-dod-ip-compliance-center"
+                "Microsoft Purview portal - Information Protection"                  = "https://aka.ms/mcca-dod-ip-compliance-center"
                 "Compliance Manager - IP Actions" = "https://aka.ms/mcca-dod-ip-compliance-manager"
             }
         }else
         {
-        $this.Links = @{
-            "Learn more about configuring classifications for SharePoint Online" = "https://aka.ms/mcca-ip-docs-learn-more"
-            "Compliance Center - Information Protection"                        = "https://aka.ms/mcca-ip-compliance-center"
-            "Compliance Manager - IP Actions" = "https://aka.ms/mcca-ip-compliance-manager"
-        }
+            $this.Links = @{
+                "Learn more about configuring classifications for SharePoint Online" = "https://aka.ms/mcca-ip-docs-learn-more"
+                "Microsoft Purview portal - Information Protection"                  = "https://aka.ms/mcca-ip-compliance-center"
+                "Compliance Manager - IP Actions" = "https://aka.ms/mcca-ip-compliance-manager"
+            }
         }
     }
 
@@ -173,7 +173,7 @@ class IP104 : CAMPCheck {
             if ($($hasremediation.count) -gt 0) {
                 $this.CAMPRemediationInfo = New-Object -TypeName CAMPRemediationInfo -Property @{
                     RemediationAvailable = $True
-                    RemediationText      = "You need to connect to Security & Compliance Center PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance Center PowerShell</a>."
+                    RemediationText      = "You need to connect to Security & Compliance PowerShell to execute the below commands. Please follow steps defined in <a href = 'https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps'> Connect to Security & Compliance PowerShell</a>."
                 }
             }
             $this.Completed = $True

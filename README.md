@@ -13,13 +13,13 @@ CAMP is a diagnostic tool that will report the status of your current configurat
 
 # What is in scope?
 
-This version will provide you recommendations for the M365 Compliance solutions listed below. We will keep adding more solutions & richer recommendations in future versions of this tool.
-  
+This version will provide you recommendations for the Microsoft Purview solutions listed below. We will keep adding more solutions & richer recommendations in future versions of this tool.
+
         1.	Microsoft Information Protection
             a. 	Data Loss Prevention
             b.	Information Protection
-        2.	Microsoft Information Governance
-            a.	Information Governance
+        2.	Data Lifecycle Management
+            a.	Data Lifecycle Management
             b.	Records Management
         3.	Insider Risk
             a.	Communication Compliance
@@ -42,17 +42,17 @@ You will be able to run this tool without an E5 subscription or M365 E5 Complian
 For running the tool:
      
 
-1.  You must have PowerShell version 5.1 or above to run this tool.
+1.  You must have PowerShell version 5.1 or above to run this tool. PowerShell 7.x is also supported and recommended for cross-platform use.
 
-2.  You must have Exchange Online PowerShell module (You can follow
+2.  You must have Exchange Online PowerShell module version 3.0.0 or higher (You can follow
     either of the following 2 methods to download the same)
 
-    * Exchange Online PowerShell V2 module that is available via the
+    * Exchange Online PowerShell module that is available via the
     PowerShell gallery:
 
     > Install-Module -Name ExchangeOnlineManagement
 
-    * Exchange Online PowerShell module (<http://aka.ms/exopsmodule>)
+    * Exchange Online PowerShell module (<https://aka.ms/exopsmodule>)
 
 3.  You must have appropriate role/user permissions to be able to run
     this tool. The following table provides details of which roles will
@@ -90,11 +90,11 @@ Exceptions:
 
 <sup>2</sup> User will be able generate report for IP apart from "Use IRM for Exchange Online" section.
 
-<sup>3</sup> User will be able generate report for IP apart from "Enable Communication Compliance in O365" section.
+<sup>3</sup> User will be able generate report for IP apart from "Enable Communication Compliance in Microsoft 365" section.
 
-<sup>4</sup> User will not be able generate report for IP apart from "Enable Auditing in Office 365" section.
+<sup>4</sup> User will not be able generate report for IP apart from "Enable Auditing in Microsoft 365" section.
 
-<sup>5</sup> User will be able generate report for IP apart from "Enable Auditing in Office 365" section.
+<sup>5</sup> User will be able generate report for IP apart from "Enable Auditing in Microsoft 365" section.
 
 # Install Guide	
 
@@ -147,7 +147,7 @@ Step 3: Generate CAMP Report
             Input	Solution
                 1	Data Loss Prevention
                 2	Information Protection
-                3	Information Governance
+                3	Data Lifecycle Management
                 4	Records Management
                 5	Communication Compliance
                 6	Insider Risk Management
@@ -162,17 +162,17 @@ Step 3: Generate CAMP Report
   In either of the cases, there will be a prompt to enter your credentials. Once you enter your credentials, CAMP will run for a while and an HTML report will be generated.
  
   4. ExchangeEnvironmentName
- 
-        This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft 365 DoD organization or Microsoft GCC High organization
-        
+
+        This will generate CAMP report for Security & Compliance PowerShell in a Microsoft 365 DoD organization or Microsoft GCC High organization
+
         O365USGovDoD
-           This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft 365 DoD organization.
-            
+           This will generate CAMP report for Security & Compliance PowerShell in a Microsoft 365 DoD organization.
+
           Get-CAMPReport -ExchangeEnvironmentName O365USGovDoD
 
          O365USGovGCCHigh
-           This will generate CAMP report for Security & Compliance Center PowerShell in a Microsoft GCC High organization.
-           
+           This will generate CAMP report for Security & Compliance PowerShell in a Microsoft GCC High organization.
+
            Get-CAMPReport -ExchangeEnvironmentName O365USGovGCCHigh
            
   5. TurnOffDataCollection
@@ -224,7 +224,7 @@ following list:
 |-------|-------------------------- |
 |1      |Data Loss Prevention |
 |2      |Information Protection |
-|3      |Information Governance |
+|3      |Data Lifecycle Management |
 |4      |Records Management |
 |5      |Communication Compliance |
 |6      |Insider Risk Management |
@@ -267,7 +267,7 @@ Due to a technical error, the tool would not have been able to fetch
 your tenant's name. In the event of such error, you may not see your
 tenant name on the report. Please try running the tool again after some
 time. If the issue persists, please reach out to us at
-[MCCAhelp\@microsoft.com](mailto:mecahelp@microsoft.com) and/or contact
+[CAMPhelp\@microsoft.com](mailto:CAMPhelp@microsoft.com) and/or contact
 your Microsoft partner.
 
 ### Why do I see "No active policy defined" when I already have policies defined?
@@ -282,7 +282,7 @@ console & the required policies will automatically be set up.
 
 Please refer to "Remarks" section in your report to understand why you
 are seeing "Improvement". If you still have concerns, please reach out
-to us at [MCCAhelp\@microsoft.com](mailto:mecahelp@microsoft.com) or
+to us at [CAMPhelp\@microsoft.com](mailto:CAMPhelp@microsoft.com) or
 contact your Microsoft partner.
 
 ### Why do I see "Policy defined but not protected on 1 or more workloads" when I already have policies defined?
@@ -308,8 +308,8 @@ Scripts" to help you avoid the hassle of manually setting up these
 policies. These policies will be created in *Test* mode and you will
 still have review & enable it manually.
 
-You should review script parameters & then run these scripts from your *Windows PowerShell ISE* console.
-You would need to connect to [Connect to Security & Compliance Center PowerShell](https://docs.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps) or [Connect to Exchange Online Center PowerShell](https://docs.microsoft.com/en-us/powershell/exchange/connect-to-exchange-online-powershell?view=exchange-ps) to execute these scripts. On successful execution of the scripts, the
+You should review script parameters & then run these scripts from your *Windows PowerShell ISE* console or PowerShell terminal.
+You would need to connect to [Security & Compliance PowerShell](https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps) or [Exchange Online PowerShell](https://learn.microsoft.com/en-us/powershell/exchange/connect-to-exchange-online-powershell?view=exchange-ps) to execute these scripts. On successful execution of the scripts, the
 required policies will automatically be set up.
 
 Note: These scripts are pre-configured and may need tweaking to achieve
