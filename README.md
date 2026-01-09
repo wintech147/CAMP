@@ -47,8 +47,16 @@ CAMP now includes checks aligned with [Microsoft Purview Deployment Models](http
 |----------|------|------------------|
 | DLP-201 | Restrict External Sharing of Sensitivity Labeled Content | Secure by Default, Oversharing Prevention |
 | DLP-202 | Enable Endpoint DLP to Prevent Data Exfiltration | Lightweight Guide to Mitigate Data Leakage |
+| DLP-203 | Configure DLP Policies for Credential Protection | Identify and Remediate Credentials Blueprint |
 
-These checks help organizations implement Microsoft's recommended data protection strategies for preventing oversharing, data leakage, and ensuring a "secure by default" posture.
+### Insider Risk Management (IRM) Blueprint Checks
+
+| Check ID | Name | Blueprint Source |
+|----------|------|------------------|
+| IRM-104 | Configure Data Leaks Policy for Adaptive Protection | Copilot Data Protection, Credentials Blueprint |
+| IRM-105 | Enable Adaptive Protection for Dynamic DLP Enforcement | Copilot Data Protection, Credentials Blueprint |
+
+These checks help organizations implement Microsoft's recommended data protection strategies for preventing oversharing, data leakage, credential exposure, and ensuring a "secure by default" posture. The Adaptive Protection checks support dynamic DLP enforcement based on insider risk levels, which is critical for protecting Copilot and AI applications.
 
 # That is awesome! How do I run it?
 
