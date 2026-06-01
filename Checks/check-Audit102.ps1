@@ -11,6 +11,9 @@ class Audit102 : CAMPCheck {
         $this.ParentArea = "Discovery & Response"
         $this.Area = "Audit"
         $this.Name = "Configure Alert Policies"
+        $this.Blueprint = [CAMPBlueprint]::DSPM -bor [CAMPBlueprint]::ShadowAI
+        $this.MaturityLevel = [CAMPMaturityLevel]::Better
+        $this.Foundational = $true
         $this.PassText = "Your organization has configured alert policies"
         $this.FailRecommendation = "Your organization should configure alert policies"
         $this.Importance = "Your organization should configure alert policies to send notifications on activities that are indicators of a potential security issue or data breach. Microsoft 365 provides built-in alert policies that are turned on by default."

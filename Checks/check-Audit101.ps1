@@ -12,6 +12,10 @@ class Audit101 : CAMPCheck {
         $this.ParentArea = "Discovery & Response"
         $this.Area = "Audit"
         $this.Name = "Enable Auditing in Microsoft 365"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP -bor [CAMPBlueprint]::CopilotAgents -bor [CAMPBlueprint]::DSPM -bor [CAMPBlueprint]::ShadowAI
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
+        $this.BlueprintStages = @{ "LightweightDLP" = 1; "CopilotAgents" = 1; "ShadowAI" = 1 }
+        $this.Foundational = $true
         $this.PassText = "Your organisation has enabled auditing for your Microsoft 365 tenant"
         $this.FailRecommendation = "Your organization should enable auditing for your Microsoft 365 tenant"
         $this.Importance = "Your organization should enable auditing for your Microsoft 365 tenant. When audit log search in the Microsoft Purview portal is turned on, user and admin activity from your organization is recorded in the audit log and retained for 90 days, and up to one year depending on the license assigned to users."

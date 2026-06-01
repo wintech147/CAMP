@@ -29,12 +29,14 @@ class html : CAMPOutput {
             $OutputDir = $this.OutputDirectory
         }
 
-        $RemediationReportFileName = "$OutputDir\CAMP-$(Get-Date -Format 'yyyyMMddHHmm')-Remediation.html"
+        $RemediationReportFileName = Join-Path $OutputDir "CAMP-$(Get-Date -Format 'yyyyMMddHHmm')-Remediation.html"
         
-        # Summary
-        $RecommendationCount = $($Checks | Where-Object { $_.Result -eq "Fail" }).Count
-        $OKCount = $($Checks | Where-Object { $_.Result -eq "Pass" }).Count
-        $InfoCount = $($Checks | Where-Object { $_.Result -eq "Recommendation" }).Count
+        # Summary - merged "Fail" + "Recommendation" into a single Recommendation bucket so
+        # the report only has two visual states: Pass (meets recommended config) and
+        # Recommendation (action suggested). The legacy CAMPResult enum still has three
+        # values internally so blueprint tagging and per-check logic don't change.
+        $PassCount = $($Checks | Where-Object { $_.Result -eq "Pass" }).Count
+        $RecommendationCount = $($Checks | Where-Object { $_.Result -eq "Fail" -or $_.Result -eq "Recommendation" }).Count
         #>
         # Misc
         $ReportTitle = "Configuration Analyzer for Microsoft Purview"
@@ -154,62 +156,6 @@ class html : CAMPOutput {
             padding-top:2px; 
             padding-bottom :2px; 
         }
-        .star-cb-group {
-            /* remove inline-block whitespace */
-            font-size: 0;
-            /* flip the order so we can use the + and ~ combinators */
-            unicode-bidi: bidi-override;
-            direction: rtl;
-            /* the hidden clearer */
-          }
-          .star-cb-group * {
-            font-size: 1rem;
-          }
-          .star-cb-group > input {
-            display: none;
-          }
-          .star-cb-group > input + label {
-            /* only enough room for the star */
-            display: inline-block;
-            overflow: hidden;
-            text-indent: 9999px;
-            width: 1.7em;
-            white-space: nowrap;
-            cursor: pointer;
-          }
-          .star-cb-group > input + label:before {
-            display: inline-block;
-            text-indent: -9999px;
-            content: ""\2606"";
-            font-size: 30px;
-            color: #005494;
-          }
-          .star-cb-group > input:checked ~ label:before, .star-cb-group > input + label:hover ~ label:before, .star-cb-group > input + label:hover:before {
-            content:""\2605"";
-            color: #e52;
-          font-size: 30px;
-            text-shadow: 0 0 1px #333;
-          }
-          .star-cb-group > .star-cb-clear + label {
-            text-indent: -9999px;
-            width: .5em;
-            margin-left: -.5em;
-          }
-          .star-cb-group > .star-cb-clear + label:before {
-            width: .5em;
-          }
-          .star-cb-group:hover > input + label:before {
-            content: ""\2606"";
-            color: #005494;
-          font-size: 30px;
-            text-shadow: none;
-          }
-          .star-cb-group:hover > input + label:hover ~ label:before, .star-cb-group:hover > input + label:hover:before {
-            content: ""\2605"";
-            color: #e52;
-          font-size: 30px;
-            text-shadow: 0 0 1px #333;
-          }
         </style>
 
         <title>$($ReportTitle)</title>
@@ -240,27 +186,6 @@ class html : CAMPOutput {
                         <div class='card-body'>
 
                             <h2 class='card-title'>$($ReportTitle)</h2>"
-                            
-                            $Output += "<div style='text-align:right;margin-top:-65px;margin-right:8px;color:#005494;';>
-				            <b>Rate this report</b>
-					</div>
-                         <div style='text-align:right;margin-top:-10px';>
-             
-                         <span class='star-cb-group'>
-                            <input type='radio' id='rating-5' name='rating' value='5' onclick=""window.open('https://aka.ms/mcca-feedback-5','_blank');"" />
-                            <label for='rating-5'>5</label>
-                            <input type='radio' id='rating-4' name='rating' value='4' onclick=""window.open('https://aka.ms/mcca-feedback-4','_blank');"" />
-                            <label for='rating-4'>4</label>
-                            <input type='radio' id='rating-3' name='rating' value='3' onclick=""window.open('https://aka.ms/mcca-feedback-3','_blank');"" />
-                            <label for='rating-3'>3</label>
-                            <input type='radio' id='rating-2' name='rating' value='2' onclick=""window.open('https://aka.ms/mcca-feedback-2','_blank');"" />
-                            <label for='rating-2'>2</label>
-                            <input type='radio' id='rating-1' name='rating' value='1' onclick=""window.open('https://aka.ms/mcca-feedback-1','_blank');"" />
-                            <label for='rating-1'>1</label>
-                            <input type='radio' id='rating-0' name='rating' value='0' class='star-cb-clear' />
-                            <label for='rating-0'>0</label>
-                            </span>
-                         </div>"
 
                             if ($(Test-Path -Path "$PSScriptRoot\..\Image\logo.jpg") -eq $True) {
                                 $Output += "<img src='$PSScriptRoot\..\Image\logo.jpg' align='right' width='250px' height='150px'/>
@@ -351,9 +276,116 @@ class html : CAMPOutput {
 
         $Output += "<br/>"
 
+        # Result colour legend — promoted to the very top of the report so users see what
+        # each badge colour means before encountering any colored badges below. Previously
+        # this lived at the bottom of the Solutions Summary table; user feedback was that
+        # it was buried.
+        $Output += "
+    <div class='card m-3'>
+        <div class='card-body py-2' style='display:flex; align-items:center; gap:14px;'>
+            <strong style='margin-right:8px;'>Legend:</strong>
+            <span class='badge badge-success' style='padding:6px 12px;'>&nbsp;</span>&nbsp;<span><strong>Pass</strong> &mdash; meets the recommended configuration</span>
+            <span class='badge badge-info' style='padding:6px 12px; margin-left:18px;'>&nbsp;</span>&nbsp;<span><strong>Recommendation</strong> &mdash; action suggested to improve posture</span>
+        </div>
+    </div>
+    "
 
 
 
+
+
+        <#
+    
+        OUTPUT GENERATION / Blueprint Maturity Scorecard
+        Shows per-blueprint Good/Better/Best progress for the six Microsoft Purview
+        Deployment Models. Only renders blueprints that have at least one tagged check.
+
+    #>
+
+        $BlueprintOrder = @(
+            @{ Flag = [CAMPBlueprint]::SecureByDefault;      Label = "Secure by Default";                              Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro" }
+            @{ Flag = [CAMPBlueprint]::LightweightDLP;       Label = "Lightweight DLP";                                Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-lightweight-dlp-intro" }
+            @{ Flag = [CAMPBlueprint]::ShadowAI;             Label = "Prevent data leak to shadow AI";                 Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-data-leak-shadow-ai-intro" }
+            @{ Flag = [CAMPBlueprint]::CopilotAgents;        Label = "Secure & govern Microsoft 365 Copilot agents";   Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-sc-agents-deployment" }
+            @{ Flag = [CAMPBlueprint]::DSPM;                 Label = "Data Security Posture Management (DSPM)";        Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-dspm-intro" }
+            @{ Flag = [CAMPBlueprint]::ReduceFalsePositives; Label = "Reduce false positives";                         Anchor = "https://learn.microsoft.com/purview/deploymentmodels/depmod-reduce-false-positives" }
+        )
+
+        $AnyBlueprintCheck = $false
+        foreach ($bp in $BlueprintOrder) {
+            $matchCount = @($Checks | Where-Object {
+                $_.Blueprint -ne [CAMPBlueprint]::None -and
+                ($_.Blueprint -band $bp.Flag) -eq $bp.Flag
+            }).Count
+            if ($matchCount -gt 0) { $AnyBlueprintCheck = $true; break }
+        }
+
+        if ($AnyBlueprintCheck) {
+            $Output += "
+    <div class='card m-3'>
+    <a name='BlueprintScorecard'></a>
+        <div class='card-header'>
+          Microsoft Purview Deployment Model Maturity Scorecard
+        </div>
+        <div class='card-body'>
+          <p>Each row shows how many checks at each Lightweight DLP maturity level (Good / Better / Best) are passing for that deployment model. Click a blueprint name to open the official Microsoft Learn deployment guide.</p>
+          <table class='table table-sm'>
+            <thead>
+              <tr>
+                <th>Blueprint</th>
+                <th style='text-align:center;'>Good</th>
+                <th style='text-align:center;'>Better</th>
+                <th style='text-align:center;'>Best</th>
+                <th style='text-align:center;'>Overall</th>
+              </tr>
+            </thead>
+            <tbody>"
+
+            foreach ($bp in $BlueprintOrder) {
+                $BpChecks = @($Checks | Where-Object {
+                    $_.Blueprint -ne [CAMPBlueprint]::None -and
+                    ($_.Blueprint -band $bp.Flag) -eq $bp.Flag -and
+                    $_.Completed -eq $true
+                })
+                if ($BpChecks.Count -eq 0) { continue }
+
+                $cellHtml = @{}
+                foreach ($levelName in @('Good','Better','Best')) {
+                    $matchingLevel = [CAMPMaturityLevel]::$levelName
+                    $atLevel = @($BpChecks | Where-Object { $_.MaturityLevel -eq $matchingLevel })
+                    if ($atLevel.Count -eq 0) {
+                        $cellHtml[$levelName] = "<span class='text-muted'>&mdash;</span>"
+                    } else {
+                        $pass = @($atLevel | Where-Object { $_.Result -eq 'Pass' }).Count
+                        # Per-cell counts are progress ratios, not pass/recommendation status — render in
+                        # neutral grey so the colour story stays reserved for actual check outcomes
+                        # (green badge = Pass, blue badge = Recommendation) elsewhere in the report.
+                        $cellHtml[$levelName] = "<span class='badge badge-secondary' style='padding:6px 10px;'>$pass / $($atLevel.Count)</span>"
+                    }
+                }
+
+                $totalPass = @($BpChecks | Where-Object { $_.Result -eq 'Pass' }).Count
+                $totalCount = $BpChecks.Count
+                $overallCell = "<span class='badge badge-secondary' style='padding:6px 10px;'>$totalPass / $totalCount</span>"
+
+                $Output += "
+              <tr>
+                <td><a href='$($bp.Anchor)' target='_blank'>$($bp.Label)</a></td>
+                <td style='text-align:center;'>$($cellHtml['Good'])</td>
+                <td style='text-align:center;'>$($cellHtml['Better'])</td>
+                <td style='text-align:center;'>$($cellHtml['Best'])</td>
+                <td style='text-align:center;'>$overallCell</td>
+              </tr>"
+            }
+
+            $Output += "
+            </tbody>
+          </table>
+          <small class='text-muted'>Maturity levels map to the Microsoft Purview <a href='https://learn.microsoft.com/purview/deploymentmodels/depmod-overview' target='_blank'>Deployment Models</a> Good / Better / Best progression.</small>
+        </div>
+    </div>
+    "
+        }
 
         <#
     
@@ -374,9 +406,8 @@ class html : CAMPOutput {
             <td width='20'><i class='fas fa-user-cog'></i>
             <td><strong>All Solutions</strong></td>
             <td align='right'>
-                <span class='badge badge-secondary' style='padding:15px;text-align:center;width:40px;"; $output += "'>$($InfoCount)</span>
-                <span class='badge badge-warning' style='padding:15px;text-align:center;width:40px;"; $output += "'>$($RecommendationCount)</span>
-                <span class='badge badge-success' style='padding:15px;text-align:center;width:40px;"; $output += "'>$($OkCount)</span>
+                <span class='badge badge-info' style='padding:15px;text-align:center;width:40px;"; $output += "'>$($RecommendationCount)</span>
+                <span class='badge badge-success' style='padding:15px;text-align:center;width:40px;"; $output += "'>$($PassCount)</span>
             </td>
         </tr>
         "
@@ -393,17 +424,19 @@ class html : CAMPOutput {
             ForEach ($Area in ($Checks | Where-Object { $_.Completed -eq $true } | Where-Object { $_.ParentArea -eq $ParentArea.Name } | Group-Object Area)) {
 
                 $Pass = @($Area.Group | Where-Object { $_.Result -eq "Pass" }).Count
-                $Fail = @($Area.Group | Where-Object { $_.Result -eq "Fail" }).Count
-                $Info = @($Area.Group | Where-Object { $_.Result -eq "Recommendation" }).Count
+                # Treat both "Fail" and "Recommendation" as a single Recommendation bucket
+                $Recs = @($Area.Group | Where-Object { $_.Result -eq "Fail" -or $_.Result -eq "Recommendation" }).Count
+                # Sanitized link target must match the per-area card's anchor below
+                # so areas with '&' or other non-word chars still scroll into view.
+                $AreaAnchor = ([regex]::Replace($Area.Name, '[^A-Za-z0-9_-]', '_'))
 
                 $Output += 
                 "
             <tr>
                 <td width='20'>
-                <td style='vertical-align:middle;'>&nbsp;&nbsp;<i class='fa fa-cog'></i>&nbsp;&nbsp; <a href='`#$($Area.Name)'>$($Area.Name)</a></td>
+                <td style='vertical-align:middle;'>&nbsp;&nbsp;<i class='fa fa-cog'></i>&nbsp;&nbsp; <a href='`#$AreaAnchor'>$($Area.Name)</a></td>
                 <td align='right' style='vertical-align:middle;'>
-                <span class='badge badge-secondary' style='padding:10px;text-align:center;width:30px;"; $output += "'>$($Info)</span>
-                <span class='badge badge-warning' style='padding:10px;text-align:center;width:30px;"; $output += "'>$($Fail)</span>
+                <span class='badge badge-info' style='padding:10px;text-align:center;width:30px;"; $output += "'>$($Recs)</span>
                 <span class='badge badge-success' style='padding:10px;text-align:center;width:30px;"; $output += "'>$($Pass)</span>
                 </td>
             </tr>
@@ -413,11 +446,7 @@ class html : CAMPOutput {
 
 
         $Output += "
-    <tr><td colspan='3' style='text-align:right'> 
-        <span class='badge badge-secondary'style='padding:5px;text-align:center'> </span>&nbsp;Recommendation
-        <span class='badge badge-warning'style='padding:5px;text-align:center'> </span>&nbsp;Improvement
-        <span class='badge badge-success' style='padding:5px;text-align:center'> </span>&nbsp;OK
-    </td></tr></table>"
+    </table>"
         $Output += "
         </div>
     </div>
@@ -428,26 +457,50 @@ class html : CAMPOutput {
         OUTPUT GENERATION / Zones
 
     #>
-        [bool] $UncompletedChecks = $False
-        [string] $UncompletedChecksName = ""
-        ForEach ($Area in ($Checks | Where-Object { $_.Completed -eq $False } | Group-Object Area)) {
-            if ($UncompletedChecks -eq $False) {
-                $UncompletedChecks = $True
-            }
-            # Each check
-            if ($UncompletedChecksName -eq "") {
-                $UncompletedChecksName += "Note: There was an issue in fetching $($Area.Name)"
-            }
-            else {
-                $UncompletedChecksName += ", $($Area.Name)"
-            }
+        # Group incomplete (Completed=$false) checks into two buckets so we don't show a
+        # red "issue in fetching" banner for checks that intentionally skipped because the
+        # required data source wasn't available (Microsoft.Graph not installed, preview
+        # feature not enabled in tenant, sovereign cloud missing the capability, etc.).
+        $NotAssessedChecks = @($Checks | Where-Object { $_.Completed -eq $False -and -not [string]::IsNullOrWhiteSpace($_.UnavailableReason) })
+        $ErrorChecks       = @($Checks | Where-Object { $_.Completed -eq $False -and [string]::IsNullOrWhiteSpace($_.UnavailableReason) })
+
+        # Minimal HTML-encode helper - avoid System.Web.HttpUtility (not available
+        # cross-platform in PowerShell 7 by default).
+        $htmlEscape = {
+            param([string]$s)
+            if ($null -eq $s) { return "" }
+            return ($s -replace '&','&amp;' -replace '<','&lt;' -replace '>','&gt;' -replace '"','&quot;')
         }
-        if ($UncompletedChecks -eq $True) {
-            $UncompletedChecksName += " information. Please try running the tool again after some time."
-        
+
+        if ($ErrorChecks.Count -gt 0) {
+            $ErrorAreaList = ($ErrorChecks | Group-Object Area | Sort-Object Name | ForEach-Object { $_.Name }) -join ', '
             $Output += "
-        <div style='color:red;'>&nbsp;&nbsp;&nbsp;
-        $UncompletedChecksName
+        <div class='alert alert-danger m-3' role='alert'>
+            <strong>Heads up:</strong> there was an issue fetching information for the following areas: <em>$(& $htmlEscape $ErrorAreaList)</em>. Try running the tool again after some time, or check the log file for details.
+        </div>"
+        }
+
+        if ($NotAssessedChecks.Count -gt 0) {
+            $Output += "
+        <div class='alert alert-info m-3' role='alert'>
+            <strong>Not assessed:</strong> $($NotAssessedChecks.Count) check(s) were skipped because the required data source wasn't available. These typically need the Microsoft.Graph SDK to be installed (<code>Install-Module Microsoft.Graph</code>), a tenant with the licensed feature, or commercial-cloud availability. See the collapsible list below for the per-check reason.
+            <details class='mt-2'>
+                <summary>Show the $($NotAssessedChecks.Count) not-assessed check(s)</summary>
+                <table class='table table-sm mt-2 mb-0'>
+                    <thead><tr><th>Control</th><th>Name</th><th>Reason</th></tr></thead>
+                    <tbody>"
+            foreach ($skipped in ($NotAssessedChecks | Sort-Object Control)) {
+                $Output += "
+                        <tr>
+                            <td><code>$(& $htmlEscape $skipped.Control)</code></td>
+                            <td>$(& $htmlEscape $skipped.Name)</td>
+                            <td><small>$(& $htmlEscape $skipped.UnavailableReason)</small></td>
+                        </tr>"
+            }
+            $Output += "
+                    </tbody>
+                </table>
+            </details>
         </div>"
         }
 
@@ -455,14 +508,17 @@ class html : CAMPOutput {
         ForEach ($Area in ($Checks | Where-Object { $_.Completed -eq $True } | Group-Object Area)) {
 
             # Write the top of the card
-            $CollapseId = $($Area.Name).Replace(" " , "_")
-            $Output += "<a name='$($Area.Name)'></a> 
+            # Sanitize to a CSS/jQuery-safe identifier — area names like
+            # "AI & Shadow IT" or "Copilot & Agents" contain '&' and other characters
+            # that break Bootstrap's data-target='#...' selector lookup.
+            $CollapseId = ([regex]::Replace($Area.Name, '[^A-Za-z0-9_-]', '_'))
+            $Output += "<a name='$CollapseId'></a> 
         <div class='card m-3'>
             <div class='card-header'>
             <div class=""row"">
             <div class='col-sm' style='text-align:left; margin-top:auto; margin-bottom:auto;'><a>$($Area.Name)</a></div>
             <div class='col-sm' style='text-align:right; padding-right:10px;'> 
-            <span id='more_$($CollapseId)' data-toggle='collapse' data-target='#$($CollapseId)_body'>
+            <span id='more_$($CollapseId)' data-toggle='collapse' data-target='#$($CollapseId)_body' style='cursor:pointer;'>
             <i class='fas fa-chevron-down' >&nbsp;&nbsp;</i>
             </span>
             </div>  
@@ -481,25 +537,21 @@ class html : CAMPOutput {
                 If ($Check.Result -eq "Pass") {
                     $CalloutType = "bd-callout-success"
                     $BadgeType = "badge-success"
-                    $BadgeName = "OK"
+                    $BadgeName = "Pass"
                     $Icon = "fas fa-thumbs-up"
                     $IconColor = "green"
                     $Title = $Check.PassText
                 } 
-                ElseIf ($Check.Result -eq "Recommendation") {
-                    $CalloutType = "bd-callout-secondary"
-                    $BadgeType = "badge-secondary"
-                    $BadgeName = "Recommendation"
-                    $Icon = "fas fa-thumbs-up"
-                    $IconColor = "gray"
-                    $Title = $Check.FailRecommendation
-                }
                 Else {
-                    $CalloutType = "bd-callout-warning"
-                    $BadgeType = "badge-warning"
-                    $BadgeName = "Improvement"
-                    $Icon = "fas fa-thumbs-down"
-                    $IconColor = "#e5ad06"
+                    # Merged "Recommendation" (was gray) and "Improvement" (was yellow with thumbs-down)
+                    # into a single blue Recommendation state. Both legacy CAMPResult values
+                    # ("Recommendation" and "Fail") land here so the report has only two visible
+                    # outcomes per check: Pass (green) or Recommendation (blue).
+                    $CalloutType = "bd-callout-info"
+                    $BadgeType = "badge-info"
+                    $BadgeName = "Recommendation"
+                    $Icon = "fas fa-info-circle"
+                    $IconColor = "#005494"
                     $Title = $Check.FailRecommendation
                 }
 
@@ -570,18 +622,17 @@ class html : CAMPOutput {
 
                         ForEach ($o in $Check.Config | Sort-Object Level -Descending) {
                             $ActionRequired = $false
+                            # Two-state per-item rendering aligned with the new check-level model:
+                            #   - Pass (any Level >= Ok) -> green check-circle
+                            #   - Recommendation (None / Recommendation) -> blue info-circle
                             if ($o.Level -ne [CAMPConfigLevel]::None -and $o.Level -ne [CAMPConfigLevel]::Recommendation) {
                                 $oicon = "fas fa-check-circle text-success"
-                                $LevelText = $o.Level.ToString()
-                            }
-                            ElseIf ($o.Level -eq [CAMPConfigLevel]::Recommendation) {
-                                $oicon = "fas fa-info-circle text-muted"
-                                $LevelText = $o.Level.ToString()
+                                $LevelText = "Pass"
                             }
                             Else {
-                                $oicon = "fas fa-times-circle text-danger"
-                                $LevelText = "Improvement"
-                                $ActionRequired = $true 
+                                $oicon = "fas fa-info-circle text-info"
+                                $LevelText = "Recommendation"
+                                if ($o.Level -eq [CAMPConfigLevel]::None) { $ActionRequired = $true }
                             }
 
                             $Output += "
@@ -734,7 +785,7 @@ class html : CAMPOutput {
         $Tenant = $(($Collection["AcceptedDomains"] | Where-Object { $_.InitialDomain -eq $True }).DomainName -split '\.')[0]
         $ReportFileName = "CAMP-$($tenant)-$(Get-Date -Format 'yyyyMMddHHmm').html"
 
-        $OutputFile = "$OutputDir\$ReportFileName"
+        $OutputFile = Join-Path $OutputDir $ReportFileName
 
         $Output | Out-File -FilePath $OutputFile
 

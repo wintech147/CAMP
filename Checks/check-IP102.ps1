@@ -10,6 +10,9 @@ class IP102 : CAMPCheck {
         $this.Control = "IP-102"
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
+        $this.BlueprintStages = @{ "SecureByDefault" = 1; "LightweightDLP" = 1 }
         $this.Name = "Auto-apply client side sensitivity labels"
         $this.PassText = "Your organization is using auto-apply client side sensitivity labels"
         $this.FailRecommendation = "Your organization should use client side sensitivity labels"

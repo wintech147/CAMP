@@ -13,6 +13,8 @@ class IP108 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
         $this.Name = "Enable Encryption on Confidential and Highly Confidential Labels"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP
+        $this.MaturityLevel = [CAMPMaturityLevel]::Best
         $this.PassText = "Your organization has encryption enabled on confidential sensitivity labels"
         $this.FailRecommendation = "Your organization should enable encryption on Confidential and Highly Confidential sensitivity labels"
         $this.Importance = "Encryption ensures that protection travels with documents across Microsoft 365, Azure, AWS, and third-party applications. According to the Secure by Default blueprint, encryption should be enabled on Confidential and Highly Confidential labels to prevent unauthorized access even if files are shared externally or exfiltrated. This is a key milestone in mature data protection implementation."
@@ -22,7 +24,7 @@ class IP108 : CAMPCheck {
         if($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovGCCHigh")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-gcch-ip-compliance-center"
                 "Apply encryption using sensitivity labels"   = "https://learn.microsoft.com/en-us/purview/encryption-sensitivity-labels"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-gcch-ip-compliance-manager"
@@ -30,7 +32,7 @@ class IP108 : CAMPCheck {
         }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-dod-ip-compliance-center"
                 "Apply encryption using sensitivity labels"   = "https://learn.microsoft.com/en-us/purview/encryption-sensitivity-labels"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-dod-ip-compliance-manager"
@@ -38,7 +40,7 @@ class IP108 : CAMPCheck {
         }else
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-ip-compliance-center"
                 "Apply encryption using sensitivity labels"   = "https://learn.microsoft.com/en-us/purview/encryption-sensitivity-labels"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-ip-compliance-manager"

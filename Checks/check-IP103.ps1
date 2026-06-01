@@ -10,6 +10,9 @@ class IP103 : CAMPCheck {
         $this.Control = "IP-103"
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP
+        $this.MaturityLevel = [CAMPMaturityLevel]::Better
+        $this.BlueprintStages = @{ "SecureByDefault" = 2; "LightweightDLP" = 2 }
         $this.Name = "Use IRM for Exchange Online"
         $this.PassText = "Your organization has enabled IRM for Exchange Online"
         $this.FailRecommendation = "Your organization should enable IRM for Exchange Online"

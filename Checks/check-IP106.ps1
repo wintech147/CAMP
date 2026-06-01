@@ -13,6 +13,8 @@ class IP106 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
         $this.Name = "Require Justification for Sensitivity Label Downgrade or Removal"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
         $this.PassText = "Your organization requires justification when users downgrade or remove sensitivity labels"
         $this.FailRecommendation = "Your organization should require justification when users downgrade or remove sensitivity labels"
         $this.Importance = "Requiring justification when users remove or lower the classification of a sensitivity label helps prevent accidental or intentional removal of protection without an audit trail. This is a key control in the Secure by Default approach, ensuring accountability and enabling investigation of potential data handling issues."
@@ -22,7 +24,7 @@ class IP106 : CAMPCheck {
         if($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovGCCHigh")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-gcch-ip-compliance-center"
                 "Sensitivity label policy settings"           = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-office-apps#what-label-policies-can-do"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-gcch-ip-compliance-manager"
@@ -30,7 +32,7 @@ class IP106 : CAMPCheck {
         }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-dod-ip-compliance-center"
                 "Sensitivity label policy settings"           = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-office-apps#what-label-policies-can-do"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-dod-ip-compliance-manager"
@@ -38,7 +40,7 @@ class IP106 : CAMPCheck {
         }else
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-ip-compliance-center"
                 "Sensitivity label policy settings"           = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-office-apps#what-label-policies-can-do"
                 "Compliance Manager - IP Actions"             = "https://aka.ms/mcca-ip-compliance-manager"

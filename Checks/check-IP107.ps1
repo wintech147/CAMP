@@ -13,6 +13,8 @@ class IP107 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
         $this.Name = "Enable Sensitivity Labels for SharePoint and OneDrive"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP -bor [CAMPBlueprint]::CopilotAgents
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
         $this.PassText = "Your organization has enabled sensitivity labels for SharePoint and OneDrive files"
         $this.FailRecommendation = "Your organization should enable sensitivity labels for SharePoint and OneDrive to support container-based labeling"
         $this.Importance = "Enabling sensitivity labels for SharePoint and OneDrive allows files to inherit labels from their container (site/library), achieving rapid protection scale with minimal user interaction. This is a foundational component of the Secure by Default approach, enabling default library labeling where all new documents automatically receive the library's sensitivity label."
@@ -22,7 +24,7 @@ class IP107 : CAMPCheck {
         if($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovGCCHigh")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-gcch-ip-compliance-center"
                 "Enable sensitivity labels for files in SharePoint and OneDrive" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-onedrive-files"
                 "Default sensitivity labels for SharePoint libraries" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-default-label"
@@ -30,7 +32,7 @@ class IP107 : CAMPCheck {
         }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-dod-ip-compliance-center"
                 "Enable sensitivity labels for files in SharePoint and OneDrive" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-onedrive-files"
                 "Default sensitivity labels for SharePoint libraries" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-default-label"
@@ -38,7 +40,7 @@ class IP107 : CAMPCheck {
         }else
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Information Protection" = "https://aka.ms/mcca-ip-compliance-center"
                 "Enable sensitivity labels for files in SharePoint and OneDrive" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-onedrive-files"
                 "Default sensitivity labels for SharePoint libraries" = "https://learn.microsoft.com/en-us/purview/sensitivity-labels-sharepoint-default-label"

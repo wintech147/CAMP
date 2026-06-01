@@ -11,6 +11,9 @@ class IP101 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Information Protection"
         $this.Name = "Create Sensitivity Labels for Sensitive or Critical Data"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
+        $this.BlueprintStages = @{ "SecureByDefault" = 1; "LightweightDLP" = 1 }
         $this.PassText = "Your organization is using sensitivity labels to classify your information"
         $this.FailRecommendation = "Your organization should be using sensitivity labels to classify your information"
         $this.Importance = "Your organization should use sensitivity labels and policies to classify your information in SharePoint Online, OneDrive for Business, and Exchange Online. This helps categorize your most important data and effectively protect it from illicit access; it can also make it easier to investigate discovered breaches."

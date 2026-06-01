@@ -28,27 +28,76 @@ This version will provide you recommendations for the Microsoft Purview solution
             a.	Audit
             b.	eDiscovery
 
-## Secure by Default Checks
+## Microsoft Purview Deployment Model coverage
 
-CAMP now includes checks aligned with [Microsoft Purview Deployment Models](https://aka.ms/purviewdeploymentmodels), including the Secure by Default, Oversharing Prevention, and Data Leakage Mitigation blueprints:
+CAMP now ships explicit coverage for all six official [Microsoft Purview Deployment Models](https://learn.microsoft.com/purview/deploymentmodels/depmod-overview) — the "blueprints" that the Microsoft Purview product engineering team publishes as the recommended Good / Better / Best progressions:
 
-### Information Protection (IP) Blueprint Checks
+| # | Blueprint | What CAMP checks |
+|---|-----------|------------------|
+| 1 | [Secure by Default](https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro) | Default labels, downgrade justification, SharePoint/OneDrive label enablement, encryption, container labels, label inheritance, default sharing link, co-authoring, all-credentials auto-labeling, label mismatch email, 5×5 taxonomy, Adaptive Protection. |
+| 2 | [Lightweight guide to mitigate data leakage](https://learn.microsoft.com/purview/deploymentmodels/depmod-lightweight-dlp-intro) | Dedicated Exchange DLP, Teams DLP, Endpoint DLP, unlabeled-content DLP, custom SITs, Adaptive Protection condition, Conditional Access tie-in. |
+| 3 | [Prevent data leak to shadow AI](https://learn.microsoft.com/purview/deploymentmodels/depmod-data-leak-shadow-ai-intro) | DSPM for AI activation, endpoint browser restrictions on AI sites, Microsoft 365 Copilot location DLP, label-scoped Copilot processing, communication compliance for risky prompts, Entra/Defender/Intune coverage awareness. |
+| 4 | [Secure & govern Microsoft 365 Copilot agents](https://learn.microsoft.com/purview/deploymentmodels/depmod-sc-agents-deployment) | Audit on for Copilot, Restricted SharePoint Search, data risk assessments, DLP restricting Copilot grounding, label inheritance in interactions, retention/eDiscovery/comms compliance for Copilot interactions. |
+| 5 | [Deploy and use DSPM](https://learn.microsoft.com/purview/deploymentmodels/depmod-dspm-intro) | RBAC role assignment, DLP analytics, IRM analytics, DSPM recommendations review, Security Copilot integration. |
+| 6 | [Reduce false positives with SITs & advanced classifiers](https://learn.microsoft.com/purview/deploymentmodels/depmod-reduce-false-positives) | Custom SIT tuning, Exact Data Match (EDM), trainable classifiers, document fingerprinting, confidence/instance-count thresholds. |
 
-| Check ID | Name | Blueprint Source |
-|----------|------|------------------|
-| IP-105 | Configure Default Sensitivity Label for All Content | Secure by Default Milestone 1 |
-| IP-106 | Require Justification for Sensitivity Label Downgrade or Removal | Secure by Default |
-| IP-107 | Enable Sensitivity Labels for SharePoint and OneDrive | Secure by Default Milestone 1 |
-| IP-108 | Enable Encryption on Confidential and Highly Confidential Labels | Secure by Default Milestone 3 |
+### Filter by blueprint with the new `-Blueprint` parameter
 
-### Data Loss Prevention (DLP) Blueprint Checks
+```powershell
+# Default - run every check across every blueprint
+Get-CAMPReport
 
-| Check ID | Name | Blueprint Source |
-|----------|------|------------------|
-| DLP-201 | Restrict External Sharing of Sensitivity Labeled Content | Secure by Default, Oversharing Prevention |
-| DLP-202 | Enable Endpoint DLP to Prevent Data Exfiltration | Lightweight Guide to Mitigate Data Leakage |
+# Only run the Shadow AI checks (plus foundational legacy CAMP checks)
+Get-CAMPReport -Blueprint @(3)
 
-These checks help organizations implement Microsoft's recommended data protection strategies for preventing oversharing, data leakage, and ensuring a "secure by default" posture.
+# Run the Secure by Default + Lightweight DLP scorecard together
+Get-CAMPReport -Blueprint @(1,2)
+```
+
+`-Blueprint` accepts numbers 1..6 matching the table above. The 19 legacy CAMP checks (Audit, eDiscovery, Information Governance, etc.) are flagged `Foundational` and are always included, so a `-Blueprint 3` (Shadow AI) report still surfaces baseline tenant hygiene findings.
+
+### Multiple output formats with the new `-OutputFormat` parameter
+
+```powershell
+# Default - HTML only (unchanged from previous releases)
+Get-CAMPReport
+
+# Emit every supported format in one run
+Get-CAMPReport -OutputFormat HTML,JSON,CSV,Markdown
+```
+
+Each format writes a separate file under your CAMP output directory:
+
+* **HTML** — the original interactive report, now includes a **Blueprint Maturity Scorecard** at the top showing Good / Better / Best progress per blueprint.
+* **JSON** — full per-check detail plus a programmatic `BlueprintScorecard` object (`SchemaVersion = "2"`), ready for Power BI / Splunk / Sentinel ingestion.
+* **CSV** — one row per (check × per-item config) for easy pivoting in Excel.
+* **Markdown** — leadership-friendly executive summary with the scorecard table and per-check findings, ready to paste into a ticket, OneNote, or status email.
+
+### Optional: Microsoft Graph SDK for richer blueprint coverage
+
+Several of the newer blueprint checks (Shadow AI, Secure Copilot Agents, DSPM, container-label sites) pull data from Microsoft Graph in addition to Security & Compliance PowerShell. Install the SDK once with:
+
+```powershell
+Install-Module Microsoft.Graph -Scope CurrentUser
+```
+
+When the SDK is present, CAMP prompts you for an interactive Graph sign-in (read-only scopes: `Sites.Read.All`, `Directory.Read.All`, `Application.Read.All`, `InformationProtectionPolicy.Read`, `Policy.Read.All`, `RoleManagement.Read.Directory`). When the SDK is missing, those checks degrade gracefully with a clear "not assessed" message — every other check still runs.
+
+### Per-check blueprint mapping
+
+Each check's class declaration in `Checks/check-*.ps1` sets `$this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP` (etc.) and `$this.MaturityLevel = [CAMPMaturityLevel]::Good|Better|Best`. The HTML / JSON / Markdown reports surface this mapping automatically. Notable additions in this release:
+
+| Area | New check IDs |
+|------|---------------|
+| Information Protection | `IP-109` … `IP-117` (auto-labeling, label inheritance, container labels, default sharing link, co-authoring, all-credentials SIT, label mismatch email, 5×5 taxonomy) |
+| Insider Risk Management | `IRM-104` (Adaptive Protection), `IRM-105` (IRM analytics) |
+| Data Loss Prevention | `DLP-203` … `DLP-208` (Exchange / Teams / unlabeled-content / custom SITs / Adaptive Protection / Conditional Access tie-in) |
+| Microsoft Purview AI | `AI-101` … `AI-107` (DSPM for AI, browser DLP, Copilot DLP, label-scoped Copilot, comms compliance for prompts, Entra/Defender, Intune MAM) |
+| Copilot & Agents | `COP-101` … `COP-108` (audit, Restricted Search, data risk assessments, grounding DLP, label inheritance, retention, eDiscovery, comms compliance) |
+| Data Security Posture Management | `DSPM-101` … `DSPM-105` (RBAC roles, DLP analytics, IRM analytics, recommendations review, Security Copilot) |
+| Classifier Tuning | `FP-101` … `FP-105` (custom SITs, EDM, trainable classifiers, document fingerprinting, threshold tuning) |
+
+These checks help organizations implement Microsoft's recommended data protection strategies for preventing oversharing, data leakage, and securing AI/Copilot interactions.
 
 # That is awesome! How do I run it?
 

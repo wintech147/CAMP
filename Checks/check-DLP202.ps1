@@ -13,6 +13,8 @@ class DLP202 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Data Loss Prevention"
         $this.Name = "Enable Endpoint DLP to Prevent Data Exfiltration"
+        $this.Blueprint = [CAMPBlueprint]::LightweightDLP -bor [CAMPBlueprint]::ShadowAI
+        $this.MaturityLevel = [CAMPMaturityLevel]::Better
         $this.PassText = "Your organization has Endpoint DLP policies configured to protect against data exfiltration"
         $this.FailRecommendation = "Your organization should enable Endpoint DLP policies to prevent sensitive data exfiltration via USB, printing, and other egress points"
         $this.Importance = "Endpoint DLP extends data loss prevention to Windows and macOS devices, enabling organizations to detect and block sensitive data from being copied to USB drives, printed, uploaded to cloud services, or accessed by unauthorized applications. This is a critical control for preventing data leakage and is recommended in the Lightweight Guide to Mitigate Data Leakage blueprint."

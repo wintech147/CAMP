@@ -13,6 +13,8 @@ class DLP201 : CAMPCheck {
         $this.ParentArea = "Microsoft Information Protection"
         $this.Area = "Data Loss Prevention"
         $this.Name = "Restrict External Sharing of Sensitivity Labeled Content"
+        $this.Blueprint = [CAMPBlueprint]::SecureByDefault -bor [CAMPBlueprint]::LightweightDLP
+        $this.MaturityLevel = [CAMPMaturityLevel]::Good
         $this.PassText = "Your organization has DLP policies restricting external sharing of labeled content"
         $this.FailRecommendation = "Your organization should create DLP policies that restrict external sharing of Confidential and Highly Confidential labeled content"
         $this.Importance = "The Secure by Default blueprint recommends using DLP policies to restrict external sharing of sensitivity labeled content. This prevents oversharing by blocking or warning when users attempt to share Confidential or Highly Confidential content with external recipients. This is a foundational control for preventing data leakage."
@@ -24,7 +26,7 @@ class DLP201 : CAMPCheck {
         if($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovGCCHigh")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Data Loss Prevention" = "https://aka.ms/mcca-gcch-dlp-compliance-center"
                 "DLP policy conditions and exceptions"        = "https://learn.microsoft.com/en-us/purview/dlp-policy-reference"
                 "Oversharing Prevention Blueprint"            = "https://aka.ms/purviewdeploymentmodels"
@@ -32,7 +34,7 @@ class DLP201 : CAMPCheck {
         }elseif ($this.ExchangeEnvironmentNameForCheck -ieq "O365USGovDoD")
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Data Loss Prevention" = "https://aka.ms/mcca-dod-dlp-compliance-center"
                 "DLP policy conditions and exceptions"        = "https://learn.microsoft.com/en-us/purview/dlp-policy-reference"
                 "Oversharing Prevention Blueprint"            = "https://aka.ms/purviewdeploymentmodels"
@@ -40,7 +42,7 @@ class DLP201 : CAMPCheck {
         }else
         {
             $this.Links = @{
-                "Secure by Default Deployment Model"          = "https://aka.ms/PurviewDeploymentModels/SecureByDefault"
+                "Secure by Default Deployment Model"          = "https://learn.microsoft.com/purview/deploymentmodels/depmod-secure-by-default-intro"
                 "Microsoft Purview portal - Data Loss Prevention" = "https://aka.ms/mcca-dlp-compliance-center"
                 "DLP policy conditions and exceptions"        = "https://learn.microsoft.com/en-us/purview/dlp-policy-reference"
                 "Oversharing Prevention Blueprint"            = "https://aka.ms/purviewdeploymentmodels"

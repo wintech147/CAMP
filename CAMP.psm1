@@ -52,23 +52,28 @@ function Get-CAMPDirectory {
     <#
 
         Gets or creates the CAMP directory in AppData
-        
+
+        Note: PowerShell 7 exposes $IsMacOS (not $IsMac). On PS 5.1 (Windows-only)
+        none of the $Is* automatic variables exist, so we fall through to the
+        Windows default — which is correct on PS 5.1.
+
     #>
-    If ($IsWindows) {
-        $Directory = "$($env:LOCALAPPDATA)\Microsoft\CAMP"
+    if ($IsWindows) {
+        $Directory = Join-Path $env:LOCALAPPDATA "Microsoft/CAMP"
     }
-    elseif ($IsLinux -or $IsMac) {
-        $Directory = "$($env:HOME)/CAMP"
+    elseif ($IsLinux -or $IsMacOS) {
+        $Directory = Join-Path $env:HOME "CAMP"
     }
     else {
-        $Directory = "$($env:LOCALAPPDATA)\Microsoft\CAMP"
+        # PS 5.1 path — $IsWindows isn't defined but we're on Windows
+        $Directory = Join-Path $env:LOCALAPPDATA "Microsoft/CAMP"
     }
 	
     If (Test-Path $Directory) {
         Return $Directory
     } 
     else {
-        mkdir $Directory | out-null
+        New-Item -ItemType Directory -Path $Directory -Force | Out-Null
         Return $Directory
     }
 }
@@ -150,9 +155,167 @@ Function Invoke-CAMPConnections {
     }
 }
 
+# Optional Microsoft Graph SDK connection used by the newer Purview deployment-model checks
+# (Shadow AI, Secure Copilot Agents, DSPM). Falls back to a "graph-unavailable" state when
+# the Microsoft.Graph SDK module is not installed or the user declines consent.
+[bool] $global:GraphConnectionEstablished = $false
+
+Function Invoke-CAMPGraphConnections {
+    Param
+    (
+        [String]$LogFile
+    )
+
+    $global:GraphConnectionEstablished = $false
+
+    try {
+        # Diagnostic: which PowerShell are we running, and where does it look for modules?
+        $PsEdition = $PSVersionTable.PSEdition
+        $PsVersion = $PSVersionTable.PSVersion.ToString()
+        Write-Log -IsInfo -InfoMessage "Graph probe: PSEdition=$PsEdition PSVersion=$PsVersion" -LogFile $LogFile -ErrorAction:SilentlyContinue
+
+        # Try several known submodules — Authentication is the only strictly-required one,
+        # but checking for ANY Microsoft.Graph.* installation gives a friendlier error if
+        # the umbrella module was partially installed.
+        $AuthModule = Get-Module -ListAvailable -Name "Microsoft.Graph.Authentication" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc | Select-Object -First 1
+        $AnyGraph   = Get-Module -ListAvailable -Name "Microsoft.Graph*" -ErrorAction:SilentlyContinue | Sort-Object Version -Desc | Select-Object -First 1
+
+        if ($null -eq $AuthModule) {
+            if ($null -ne $AnyGraph) {
+                # Partial install — umbrella or some sub-modules present but Authentication is not.
+                $InfoMessage = @"
+Microsoft.Graph.Authentication module not found, but other Microsoft.Graph.* modules are available (e.g. $($AnyGraph.Name) $($AnyGraph.Version) at $($AnyGraph.ModuleBase)).
+Graph-backed checks will be skipped. Try repairing the install with:
+    Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force
+or reinstall the umbrella module:
+    Install-Module Microsoft.Graph -Scope CurrentUser -Force -AllowClobber
+Running PowerShell: $PsEdition $PsVersion
+"@
+            }
+            else {
+                # Nothing found at all — most often "installed in different PS edition".
+                $CurrentPaths = ($env:PSModulePath -split [System.IO.Path]::PathSeparator) -join "`n    "
+                $InfoMessage = @"
+Microsoft.Graph SDK is not installed for this PowerShell ($PsEdition $PsVersion).
+If you installed it in a different PowerShell edition (e.g. installed in Windows PowerShell 5.1 but running this in PowerShell 7), re-install it here with:
+    Install-Module Microsoft.Graph -Scope CurrentUser -Force
+PSModulePath being searched:
+    $CurrentPaths
+Graph-backed checks (Shadow AI, Copilot Agents, DSPM blueprints) will be skipped.
+"@
+            }
+            Write-Host "$(Get-Date) $InfoMessage" -ForegroundColor:Yellow
+            Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
+            return
+        }
+
+        Write-Log -IsInfo -InfoMessage "Graph probe: found Microsoft.Graph.Authentication $($AuthModule.Version) at $($AuthModule.ModuleBase)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+
+        # Import the submodules we need. -ErrorAction:Stop so a load failure is loud, not silent.
+        $RequiredSubmodules = @(
+            "Microsoft.Graph.Authentication",
+            "Microsoft.Graph.Sites",
+            "Microsoft.Graph.Identity.DirectoryManagement",
+            "Microsoft.Graph.Identity.SignIns",
+            "Microsoft.Graph.Applications"
+        )
+        $LoadedSubmodules = @()
+        $MissingSubmodules = @()
+        foreach ($sub in $RequiredSubmodules) {
+            try {
+                Import-Module $sub -ErrorAction:Stop -WarningAction:SilentlyContinue
+                $LoadedSubmodules += $sub
+            }
+            catch {
+                $MissingSubmodules += $sub
+                Write-Log -IsInfo -InfoMessage "Graph probe: failed to import $sub - $($_.Exception.Message)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+            }
+        }
+        if ($MissingSubmodules.Count -gt 0) {
+            Write-Host "$(Get-Date) Some Microsoft.Graph submodules could not be loaded: $($MissingSubmodules -join ', '). Checks needing those will report Not Assessed." -ForegroundColor:Yellow
+        }
+
+        $RequiredScopes = @(
+            "Sites.Read.All",
+            "Directory.Read.All",
+            "Application.Read.All",
+            "InformationProtectionPolicy.Read",
+            "Policy.Read.All",
+            "RoleManagement.Read.Directory"
+        )
+
+        $InfoMessage = "Connecting to Microsoft Graph (interactive)"
+        Write-Host "$(Get-Date) $InfoMessage"
+        Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
+
+        $GraphEnvironment = "Global"
+        switch ($global:EnvironmentName) {
+            "O365USGovGCCHigh" { $GraphEnvironment = "USGov" }
+            "O365USGovDoD" { $GraphEnvironment = "USGovDoD" }
+            Default { $GraphEnvironment = "Global" }
+        }
+
+        # Use -ErrorAction Stop so a cancelled browser sign-in surfaces as a catchable error
+        # instead of being swallowed silently into an ambiguous half-connected state.
+        try {
+            Connect-MgGraph -Scopes $RequiredScopes -Environment $GraphEnvironment -NoWelcome -ErrorAction:Stop -WarningAction:SilentlyContinue | Out-Null
+        }
+        catch {
+            Write-Host "$(Get-Date) Microsoft Graph sign-in did not complete: $($_.Exception.Message). Graph-backed checks will report limited information." -ForegroundColor:Yellow
+            Write-Log -IsInfo -InfoMessage "Graph sign-in failed: $($_.Exception.Message)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+            return
+        }
+
+        $Context = Get-MgContext -ErrorAction:SilentlyContinue
+        if ($null -eq $Context) {
+            Write-Host "$(Get-Date) Microsoft Graph context unavailable after Connect-MgGraph. Graph-backed checks will report limited information." -ForegroundColor:Yellow
+            return
+        }
+
+        # Validate that at least the highest-value scope was granted; an existing legacy context
+        # may otherwise look "connected" while missing the scopes our checks need.
+        $GrantedScopes = @($Context.Scopes)
+        $MissingCriticalScopes = @($RequiredScopes | Where-Object { $GrantedScopes -notcontains $_ })
+        if ($MissingCriticalScopes.Count -eq $RequiredScopes.Count) {
+            Write-Host "$(Get-Date) Microsoft Graph context exists but none of the required scopes were granted. Graph-backed checks will report limited information." -ForegroundColor:Yellow
+            return
+        }
+
+        $global:GraphConnectionEstablished = $true
+        $InfoMessage = "Microsoft Graph connection established as $($Context.Account) (granted scopes: $($GrantedScopes.Count); missing: $($MissingCriticalScopes.Count))"
+        Write-Host "$(Get-Date) $InfoMessage"
+        Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
+    }
+    catch {
+        $global:GraphConnectionEstablished = $false
+        Write-Host "$(Get-Date) Microsoft Graph connection unavailable: $($_.Exception.Message). Graph-backed checks will report limited information." -ForegroundColor:Yellow
+        $ErrorMessage = $_.ToString()
+        $StackTraceInfo = $_.ScriptStackTrace
+        Write-Log -IsError -ErrorMessage $ErrorMessage -StackTraceInfo $StackTraceInfo -LogFile $LogFile -ErrorAction:SilentlyContinue
+    }
+}
+
 enum CheckType {
     ObjectPropertyValue
     PropertyValue
+}
+
+[Flags()]
+enum CAMPBlueprint {
+    None = 0
+    SecureByDefault = 1
+    LightweightDLP = 2
+    ShadowAI = 4
+    CopilotAgents = 8
+    DSPM = 16
+    ReduceFalsePositives = 32
+}
+
+enum CAMPMaturityLevel {
+    None = 0
+    Good = 1
+    Better = 2
+    Best = 3
 }
 
 [Flags()]
@@ -268,6 +431,24 @@ Class CAMPCheck {
     $Links
     $CAMPParams
 
+    # Microsoft Purview Deployment Model alignment.
+    # Blueprint = which deployment models this check supports (any combination of CAMPBlueprint flags).
+    # MaturityLevel = where on the Good/Better/Best progression this check falls (per Lightweight DLP nomenclature).
+    # BlueprintStages = per-blueprint step number (e.g. @{ "SecureByDefault" = 2 } for SbD Step 2).
+    # Foundational = if $true, this check is included in every report regardless of -Blueprint filter
+    #                (because it represents baseline Purview hygiene). Legacy CAMP checks default to $true.
+    # RequiredCollections / RequiredGraphScopes / RequiredLicenses tell the runtime (and future docs)
+    # what the check needs to run; CommercialOnly = $true means the check is not available in GCCH/DoD.
+    [CAMPBlueprint] $Blueprint = [CAMPBlueprint]::None
+    [CAMPMaturityLevel] $MaturityLevel = [CAMPMaturityLevel]::None
+    [hashtable] $BlueprintStages = @{}
+    [bool] $Foundational = $false
+    [string[]] $RequiredCollections = @()
+    [string[]] $RequiredGraphScopes = @()
+    [string[]] $RequiredLicenses = @()
+    [bool] $CommercialOnly = $false
+    [string] $UnavailableReason = ""
+
     [CAMPResult] $Result = [CAMPResult]::Pass
     [int] $FailCount = 0
     [int] $PassCount = 0
@@ -276,6 +457,46 @@ Class CAMPCheck {
     
     # Overridden by check
     GetResults($Config) { }
+
+    # Helper for new-blueprint checks: mark this check as "skipped because the data source is missing"
+    # (e.g. Microsoft.Graph not installed, the user declined consent, or the tenant lacks the licensed feature).
+    # Sets Completed=$false so the HTML/JSON/CSV/Markdown outputs surface it consistently across modules.
+    SetUnavailable([string]$Reason) {
+        $this.Completed = $false
+        $this.UnavailableReason = $Reason
+    }
+
+    # Convenience used by Graph-backed checks to ask "is this collection key usable?"
+    # Returns $false ONLY when the legacy CAMP collection layer signaled a hard error
+    # (the literal string "Error") or the key was never set. A $null value or empty
+    # array is treated as a valid empty result — the check should iterate it (foreach
+    # over $null is a no-op in PowerShell) and emit a "no items configured" finding
+    # rather than mis-reporting it as "data source unavailable". This mirrors the
+    # convention used by the legacy CAMP check files (check-IP101.ps1 etc.) which
+    # only branch on `-eq "Error"`.
+    [bool] HasCollection($Config, [string]$Key) {
+        if ($null -eq $Config) { return $false }
+        if (-not $Config.ContainsKey($Key)) { return $false }
+        $value = $Config[$Key]
+        if ($value -is [string] -and $value -eq "Error") { return $false }
+        return $true
+    }
+
+    # Emit a single Recommendation-level Config row pointing the admin at a portal
+    # surface, then mark the check Completed. Used by checks that target preview or
+    # portal-only Purview features where there's no reliable PowerShell verification
+    # path. Prevents the check from disappearing into the "Not assessed" section —
+    # it shows up as an actionable Recommendation in the main report instead.
+    EmitAwarenessRecommendation([string]$ObjectName, [string]$ConfigItem, [string]$ConfigData, [string]$InfoText) {
+        $cfg = [CAMPCheckConfig]::new()
+        $cfg.Object     = $ObjectName
+        $cfg.ConfigItem = $ConfigItem
+        $cfg.ConfigData = $ConfigData
+        $cfg.InfoText   = $InfoText
+        $cfg.SetResult([CAMPConfigLevel]::Recommendation, "Fail")
+        $this.AddConfig($cfg)
+        $this.Completed = $true
+    }
 
     AddConfig([CAMPCheckConfig]$Config) {
         $this.Config += $Config
@@ -460,14 +681,24 @@ Function Get-CAMPCheckDefs {
     }
 
 
-    # Creating Non-DLP check objects for each improvement actions
+    # Creating Non-DLP check objects for each improvement actions.
+    # The original CAMP scheme inferred a "solution code" from the filename: it stripped the
+    # last 3 chars (the "101"/"102" suffix) and matched the leading prefix against GetRequiredSolution.
+    # New blueprint-aligned checks (AI-*, COP-*, DSPM-*, FP-*) don't map to any of the 8 legacy
+    # solution codes, so we explicitly opt them into the load regardless of the -Solution filter
+    # (they're still subject to the -Blueprint filter at run time). Anything else still respects
+    # the existing solution-prefix matching for full backwards compatibility.
+    $BlueprintOnlyPrefixes = @("AI", "COP", "DSPM", "FP")
     ForEach ($CheckFile in $CheckFiles) {
         if ($CheckFile.BaseName -match '^check-(.*)$' -and ($matches[1] -notlike "DLP")) {
             $solutioname = $matches[1]
             $length = $solutioname.length
             $solutioname = $solutioname.substring(0, $length - 3)
-            
-            if (($null -ne $($Collection["GetRequiredSolution"])) -and ($($Collection["GetRequiredSolution"]) -icontains "$solutioname")) {
+
+            $IsBlueprintOnly = $BlueprintOnlyPrefixes -icontains $solutioname
+
+            if ($IsBlueprintOnly -or
+                (($null -ne $($Collection["GetRequiredSolution"])) -and ($($Collection["GetRequiredSolution"]) -icontains "$solutioname"))) {
                 Write-Verbose "Importing $($matches[1])"
                 . $CheckFile.FullName
                 $Check = New-Object -TypeName $matches[1]
@@ -495,6 +726,15 @@ Function Get-CAMPCheckDefs {
         }
     }
     $Checks = $Checks | Sort-Object -Property @{ expression = 'ParentArea' ; descending = $true }, @{expression = 'Area' ; descending = $false }
+
+    # Auto-mark any check that has no Blueprint as Foundational so the -Blueprint filter
+    # keeps surfacing legacy baseline-hygiene findings (Audit, eDiscovery, basic IRM, etc.)
+    # alongside the blueprint-specific findings.
+    foreach ($Check in $Checks) {
+        if ($Check.Blueprint -eq [CAMPBlueprint]::None -and -not $Check.Foundational) {
+            $Check.Foundational = $true
+        }
+    }
 
     Return $Checks
 }
@@ -541,10 +781,26 @@ Function Get-CAMPOutputs {
     # Load individual check definitions
     $OutputFiles = Get-ChildItem "$PSScriptRoot\Outputs"
 
+    # Warn if the caller asked for an output format that no module under Outputs/ provides yet.
+    # The original CAMP would silently no-op; that's confusing for users opting into the new
+    # -OutputFormat CSV / Markdown paths before those modules ship.
+    $AvailableModuleNames = @()
     ForEach ($OutputFile in $OutputFiles) {
         if ($OutputFile.BaseName -match '^output-(.*)$') {
-            # Determine if this type should be loaded
-            If ($Modules -contains $matches[1]) {
+            $AvailableModuleNames += $matches[1]
+        }
+    }
+    if ($null -ne $Modules) {
+        $MissingModules = @($Modules | Where-Object { $AvailableModuleNames -inotcontains $_ })
+        foreach ($missing in $MissingModules) {
+            Write-Host "$(Get-Date) WARNING: Requested output format '$missing' has no Outputs\output-$missing.ps1 module installed. Skipping." -ForegroundColor:Yellow
+        }
+    }
+
+    ForEach ($OutputFile in $OutputFiles) {
+        if ($OutputFile.BaseName -match '^output-(.*)$') {
+            # Determine if this type should be loaded (case-insensitive match against requested formats)
+            If (($Modules | ForEach-Object { $_.ToLower() }) -contains $matches[1].ToLower()) {
                 Write-Verbose "Importing $($matches[1])"
                 . $OutputFile.FullName
                 $Output = New-Object -TypeName $matches[1]
@@ -825,6 +1081,60 @@ Function Get-AlertPolicies {
     Return $Collection
 }
 
+# Get Microsoft Graph backed data used by Shadow AI, Secure Copilot Agents, and DSPM checks.
+# Every key falls back to "Error" (or remains $null) when the Graph SDK is missing or the
+# user declined consent, allowing the checks themselves to degrade gracefully.
+Function Get-CAMPGraphCollection {
+    Param(
+        $Collection,
+        [string]$LogFile
+    )
+
+    # Pre-populate every Graph key so per-check $Config[...] lookups never explode.
+    foreach ($key in @("GetGraphContext", "GetSpoSites", "GetContainerLabels", "GetEntraApps",
+                       "GetEntraDirectoryRoles", "GetEntraConditionalAccessPolicies",
+                       "GetDspmAiSignals", "GetSpoTenantSettings")) {
+        if (-not $Collection.ContainsKey($key)) {
+            $Collection[$key] = "Error"
+        }
+    }
+
+    if (-not $global:GraphConnectionEstablished) {
+        Write-Log -IsInfo -InfoMessage "Skipping Graph-backed data collection (Graph not connected)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+        return $Collection
+    }
+
+    try {
+        $Collection["GetGraphContext"] = Get-MgContext -ErrorAction:SilentlyContinue
+    } catch { $Collection["GetGraphContext"] = "Error" }
+
+    try {
+        # First 200 SPO sites with sensitivity labels — enough for a representative scan
+        # without blowing up tenants with thousands of sites.
+        $Collection["GetSpoSites"] = Get-MgSite -Search "*" -Top 200 -ErrorAction:SilentlyContinue
+    } catch {
+        $Collection["GetSpoSites"] = "Error"
+        Write-Log -IsInfo -InfoMessage "Graph: Get-MgSite unavailable (likely missing Sites.Read.All consent)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+    }
+
+    try {
+        $Collection["GetEntraApps"] = Get-MgApplication -Top 999 -ErrorAction:SilentlyContinue
+    } catch {
+        $Collection["GetEntraApps"] = "Error"
+        Write-Log -IsInfo -InfoMessage "Graph: Get-MgApplication unavailable (likely missing Application.Read.All consent)" -LogFile $LogFile -ErrorAction:SilentlyContinue
+    }
+
+    try {
+        $Collection["GetEntraDirectoryRoles"] = Get-MgDirectoryRole -ErrorAction:SilentlyContinue
+    } catch { $Collection["GetEntraDirectoryRoles"] = "Error" }
+
+    try {
+        $Collection["GetEntraConditionalAccessPolicies"] = Get-MgIdentityConditionalAccessPolicy -ErrorAction:SilentlyContinue
+    } catch { $Collection["GetEntraConditionalAccessPolicies"] = "Error" }
+
+    Return $Collection
+}
+
 
 #Get Organisation Region
 Function Get-OrganisationRegion {
@@ -985,6 +1295,11 @@ Function Get-CAMPCollection {
     Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
     $Collection = Get-AlertPolicies -Collection $Collection -LogFile $LogFile
 
+    $InfoMessage = "Getting Microsoft Graph backed signals (best effort)"
+    Write-Host "$(Get-Date) $InfoMessage"
+    Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
+    $Collection = Get-CAMPGraphCollection -Collection $Collection -LogFile $LogFile
+
     $InfoMessage = "Getting Organization's region information"
     Write-Host "$(Get-Date) $InfoMessage"
     Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
@@ -1063,6 +1378,21 @@ Function Get-CAMPReport {
          O365USGovGCCHigh
            This will generate CAMP report for Security & Compliance PowerShell in a Microsoft GCC High organization.
 
+        .PARAMETER Blueprint
+            Filter the report to one or more Microsoft Purview Deployment Models ("blueprints").
+            Accepts numbers 1..6:
+                1   Secure by Default
+                2   Lightweight guide to mitigate data leakage
+                3   Prevent data leak to shadow AI
+                4   Secure & govern Microsoft 365 Copilot agents
+                5   Deploy and use Data Security Posture Management (DSPM)
+                6   Reduce false positives with SITs & advanced classifiers
+            Omit to include all blueprints (default, fully backward compatible).
+
+        .PARAMETER OutputFormat
+            One or more output formats to generate. Defaults to HTML.
+            Valid values: HTML, JSON, CSV, Markdown.
+
         .PARAMETER Collection
             Internal only.
         .EXAMPLE 
@@ -1077,6 +1407,12 @@ Function Get-CAMPReport {
 		.EXAMPLE
 		    Get-CAMPReport -Solution @(1,7) -Geo @(9)
 			This will generate a report only on for the solutions entered by you and based on the regions you have selected. 
+        .EXAMPLE
+            Get-CAMPReport -Blueprint @(1,2)
+            This will generate a report covering only the Secure by Default and Lightweight DLP blueprints.
+        .EXAMPLE
+            Get-CAMPReport -OutputFormat HTML,JSON,CSV,Markdown
+            This will generate the report in every supported output format.
 
     
 #>
@@ -1086,15 +1422,22 @@ Function Get-CAMPReport {
         [Switch]$TurnOffDataCollection,
         [System.Collections.ArrayList] $Geo = @(),
         [System.Collections.ArrayList] $Solution = @(),
+        # Filter the report to a specific Microsoft Purview Deployment Model. Accepts numbers 1..6:
+        # 1 = Secure by Default, 2 = Lightweight DLP, 3 = Shadow AI, 4 = Copilot Agents,
+        # 5 = DSPM, 6 = Reduce False Positives. Omit (default) to include all blueprints.
+        [System.Collections.ArrayList] $Blueprint = @(),
+        # One or more output formats. Defaults to HTML for backward compatibility.
+        [ValidateSet('HTML','JSON','CSV','Markdown')]
+        [string[]] $OutputFormat = @('HTML'),
         [string][validateset('O365Default', 'O365USGovDoD', 'O365USGovGCCHigh')] $ExchangeEnvironmentName = 'O365Default',
         $Collection
     )
     $OutputDirectoryName = Get-CAMPDirectory
-    if(($TurnOffDataCollection -eq $true) -and ($(Test-Path -Path "$OutputDirectoryName\UserConsent.txt" -PathType Leaf) -eq $true))
+    if(($TurnOffDataCollection -eq $true) -and ($(Test-Path -Path (Join-Path $OutputDirectoryName "UserConsent.txt") -PathType Leaf) -eq $true))
     {
-        Remove-Item "$OutputDirectoryName\UserConsent.txt"
+        Remove-Item (Join-Path $OutputDirectoryName "UserConsent.txt")
     }
-    if ((Test-Path -Path "$OutputDirectoryName\UserConsent.txt" -PathType Leaf) -and ($(Get-Content "$OutputDirectoryName\UserConsent.txt") -ieq "Yes")) {
+    if ((Test-Path -Path (Join-Path $OutputDirectoryName "UserConsent.txt") -PathType Leaf) -and ($(Get-Content (Join-Path $OutputDirectoryName "UserConsent.txt")) -ieq "Yes")) {
         $global:TelemetryEnabled = $true
     }
     else {
@@ -1105,11 +1448,11 @@ Function Get-CAMPReport {
             $telemetryConsent = Read-Host -ErrorAction:SilentlyContinue
             $telemetryConsent = $telemetryConsent.Trim()
             if (($telemetryConsent -ieq "y") -or ($telemetryConsent -ieq "yes")) {
-                if (Test-Path -Path "$OutputDirectoryName\UserConsent.txt" -PathType Leaf) {
-                    Remove-Item "$OutputDirectoryName\UserConsent.txt"
+                if (Test-Path -Path (Join-Path $OutputDirectoryName "UserConsent.txt") -PathType Leaf) {
+                    Remove-Item (Join-Path $OutputDirectoryName "UserConsent.txt")
                 }
-                New-Item "$OutputDirectoryName\UserConsent.txt" | Out-Null
-                Set-Content "$OutputDirectoryName\UserConsent.txt" 'Yes' 
+                New-Item (Join-Path $OutputDirectoryName "UserConsent.txt") | Out-Null
+                Set-Content (Join-Path $OutputDirectoryName "UserConsent.txt") 'Yes' 
                 $global:TelemetryEnabled = $true
                 break
             }
@@ -1125,9 +1468,9 @@ Function Get-CAMPReport {
     }
     
     $global:EnvironmentName = $ExchangeEnvironmentName
-    $LogDirectory = "$OutputDirectoryName\Logs"
+    $LogDirectory = Join-Path $OutputDirectoryName "Logs"
     $FileName = "CAMP-$(Get-Date -Format 'yyyyMMddHHmmss').log"
-    $LogFile = "$LogDirectory\$FileName"
+    $LogFile = Join-Path $LogDirectory $FileName
     #Creating the logfiles folder if not present
     if ($(Test-Path -Path $LogDirectory) -eq $false) {
         New-Item -Path $LogDirectory -ItemType Directory -ErrorAction:SilentlyContinue | Out-Null
@@ -1206,7 +1549,7 @@ Function Get-CAMPReport {
     
 
     try {
-        $Result = Invoke-CAMP -PerformVersionCheck $PerformVersionCheck -Collection $Collection -Output @("HTML") -GeoList $GeoList -SolutionList $SolutionList -LogFile $LogFile -ExchangeEnvironmentName $ExchangeEnvironmentName-ErrorAction:SilentlyContinue
+        $Result = Invoke-CAMP -PerformVersionCheck $PerformVersionCheck -Collection $Collection -Output $OutputFormat -BlueprintFilter $Blueprint -GeoList $GeoList -SolutionList $SolutionList -LogFile $LogFile -ExchangeEnvironmentName $ExchangeEnvironmentName-ErrorAction:SilentlyContinue
         $InfoMessage = "Complete! Output is in $($Result.Result)"
         Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
         Write-Host "$(Get-Date) $InfoMessage"
@@ -1243,6 +1586,16 @@ Function Get-CAMPReport {
         catch {
             
         }
+
+        try {
+            if ($($global:GraphConnectionEstablished) -eq $true) {
+                Disconnect-MgGraph -ErrorAction:SilentlyContinue | Out-Null
+                $global:GraphConnectionEstablished = $false
+            }
+        }
+        catch {
+
+        }
     }
    
 }
@@ -1257,6 +1610,7 @@ Function Invoke-CAMP {
         $Collection,
         [System.Collections.ArrayList] $GeoList = @(),
         [System.Collections.ArrayList] $SolutionList = @(),
+        [System.Collections.ArrayList] $BlueprintFilter = @(),
         [String]$LogFile
     )
     $InfoMessage = "Configuration Analyzer for Microsoft Purview Started"
@@ -1275,6 +1629,7 @@ Function Invoke-CAMP {
     $InfoMessage = "Establishing Connections"
     Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
     Invoke-CAMPConnections -LogFile $LogFile -ExchangeEnvironmentName $ExchangeEnvironmentName
+    Invoke-CAMPGraphConnections -LogFile $LogFile
     $InfoMessage = "Connections Established"
     Write-Log -IsInfo -InfoMessage $InfoMessage -LogFile $LogFile -ErrorAction:SilentlyContinue
   
@@ -1305,8 +1660,39 @@ Function Invoke-CAMP {
 
     
     
+    # Apply blueprint filter (additive to Geo / Solution filters).
+    # BlueprintFilter is a list of 1..6 integers matching the CAMPBlueprint flag positions:
+    # 1=SecureByDefault, 2=LightweightDLP, 3=ShadowAI, 4=CopilotAgents, 5=DSPM, 6=ReduceFalsePositives.
+    # An empty list (default) means "include every check regardless of blueprint".
+    # Checks marked $Foundational=$true (legacy CAMP checks) are always included so a
+    # `-Blueprint 3` (Shadow AI only) report still surfaces baseline tenant hygiene findings.
+    [CAMPBlueprint] $BlueprintMask = [CAMPBlueprint]::None
+    if ($null -ne $BlueprintFilter -and $BlueprintFilter.Count -gt 0) {
+        $BlueprintMaskMap = @{
+            1 = [CAMPBlueprint]::SecureByDefault
+            2 = [CAMPBlueprint]::LightweightDLP
+            3 = [CAMPBlueprint]::ShadowAI
+            4 = [CAMPBlueprint]::CopilotAgents
+            5 = [CAMPBlueprint]::DSPM
+            6 = [CAMPBlueprint]::ReduceFalsePositives
+        }
+        foreach ($bp in $BlueprintFilter) {
+            if ($BlueprintMaskMap.ContainsKey([int]$bp)) {
+                $BlueprintMask = $BlueprintMask -bor $BlueprintMaskMap[[int]$bp]
+            }
+        }
+    }
+
     # Perform checks inside classes/modules
     ForEach ($Check in ($Checks | Sort-Object Area)) {
+
+        # Skip checks that don't match the blueprint filter (when one was supplied).
+        # Foundational checks (the legacy 19) are always kept for context.
+        if ($BlueprintMask -ne [CAMPBlueprint]::None) {
+            if (-not $Check.Foundational -and (($Check.Blueprint -band $BlueprintMask) -eq 0)) {
+                continue
+            }
+        }
 
         # Run DLP checks by default
         if ($check.Services -band [CAMPService]::DLP) {
